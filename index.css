@@ -68,6 +68,35 @@ html.has-bg.dark .widget-card-root {
   border-radius: 8px;
 }
 
+/* Transparent navbar when background image is active */
+html.has-bg header {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.has-bg .header-wordmark {
+  color: rgba(255, 255, 255, 0.85) !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+
+html.has-bg header button {
+  color: rgba(255, 255, 255, 0.85) !important;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
+}
+
+html.has-bg header button:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: white !important;
+}
+
+/* Clock text forced white + shadow when a background image is active */
+html.has-bg .clock-text {
+  color: rgba(255, 255, 255, 0.85) !important;
+  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.65);
+}
+
 /* Scanline effect for dark mode header */
 .dark .header-scanlines {
   background-image: repeating-linear-gradient(

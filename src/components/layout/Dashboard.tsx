@@ -34,13 +34,13 @@ function CenterClock() {
 
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-      <p className="font-mono font-thin tabular-nums leading-none
+      <p className="clock-text font-mono font-thin tabular-nums leading-none
         text-[#111520]/40 dark:text-white/30"
         style={{ fontSize: 'clamp(64px, 10vw, 120px)' }}
       >
         {time}
       </p>
-      <p className="font-mono uppercase tracking-[0.3em] mt-3
+      <p className="clock-text font-mono uppercase tracking-[0.3em] mt-3
         text-[#111520]/40 dark:text-white/30"
         style={{ fontSize: 'clamp(10px, 1.1vw, 14px)' }}
       >

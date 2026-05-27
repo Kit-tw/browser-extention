@@ -3,6 +3,7 @@ import { useSettings } from '../../hooks/useSettings'
 
 interface HeaderProps {
   onOpenSettings: () => void
+  onToggleShortcuts: () => void
 }
 
 function HexLogo() {
@@ -23,7 +24,7 @@ function HexLogo() {
   )
 }
 
-export function Header({ onOpenSettings }: HeaderProps) {
+export function Header({ onOpenSettings, onToggleShortcuts }: HeaderProps) {
   const { dashboard, updateDashboard } = useSettings()
 
   const cycleTheme = useCallback(() => {
@@ -37,13 +38,13 @@ export function Header({ onOpenSettings }: HeaderProps) {
   return (
     <header className="
       relative z-10 h-11 shrink-0 flex items-center gap-4 px-5
-      bg-white dark:bg-[#0E1117]
-      border-b border-[#E8EBF0] dark:border-[#1E2330]
+      bg-white/50 dark:bg-[#0E1117]/70 backdrop-blur-md
+      border-b border-black/[0.06] dark:border-white/[0.06]
     ">
       {/* Logo + wordmark */}
       <div className="flex items-center gap-2 shrink-0">
         <HexLogo />
-        <span className="font-mono text-[10px] font-semibold tracking-[0.18em] uppercase
+        <span className="header-wordmark font-mono text-[10px] font-semibold tracking-[0.18em] uppercase
           text-[#9BA3B0] dark:text-[#8B95A8]">
           Dev Dashboard
         </span>
@@ -57,9 +58,9 @@ export function Header({ onOpenSettings }: HeaderProps) {
         title={`Theme: ${dashboard.theme}`}
         className="
           w-7 h-7 rounded text-sm flex items-center justify-center shrink-0 font-mono
-          text-[#9BA3B0] dark:text-[#8B95A8]
-          hover:text-[#374151] dark:hover:text-[#CDD3DF]
-          hover:bg-[#F4F6FA] dark:hover:bg-[#1A1E28]
+          text-[#6B7280] dark:text-[#8B95A8]
+          hover:text-[#111827] dark:hover:text-[#CDD3DF]
+          hover:bg-black/[0.06] dark:hover:bg-white/[0.07]
           transition-colors duration-150
         "
         aria-label={`Current theme: ${dashboard.theme}`}
@@ -67,14 +68,34 @@ export function Header({ onOpenSettings }: HeaderProps) {
         {themeLabel[dashboard.theme]}
       </button>
 
+      {/* Keyboard shortcuts */}
+      <button
+        onClick={onToggleShortcuts}
+        title="Keyboard shortcuts (?)"
+        className="
+          w-7 h-7 rounded flex items-center justify-center shrink-0
+          text-[#6B7280] dark:text-[#8B95A8]
+          hover:text-[#111827] dark:hover:text-[#CDD3DF]
+          hover:bg-black/[0.06] dark:hover:bg-white/[0.07]
+          transition-colors duration-150
+        "
+        aria-label="Keyboard shortcuts"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+          <rect x="2" y="6" width="20" height="13" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8" />
+        </svg>
+      </button>
+
       {/* Settings */}
       <button
         onClick={onOpenSettings}
+        title="Settings"
         className="
           w-7 h-7 rounded flex items-center justify-center shrink-0
-          text-[#9BA3B0] dark:text-[#8B95A8]
-          hover:text-[#374151] dark:hover:text-[#CDD3DF]
-          hover:bg-[#F4F6FA] dark:hover:bg-[#1A1E28]
+          text-[#6B7280] dark:text-[#8B95A8]
+          hover:text-[#111827] dark:hover:text-[#CDD3DF]
+          hover:bg-black/[0.06] dark:hover:bg-white/[0.07]
           transition-colors duration-150
         "
         aria-label="Settings"
