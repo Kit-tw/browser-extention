@@ -13,6 +13,12 @@ export interface GitLabAccount {
   token: string
 }
 
+export interface GitHubAccount {
+  id: string
+  label: string
+  token: string
+}
+
 export type WidgetId = 'jira' | 'gitlab' | 'todo' | 'note'
 
 export interface WidgetPosition {
@@ -53,5 +59,6 @@ export interface DashboardSettings {
 export interface StoredSettings {
   jiraAccounts: JiraAccount[]
   gitlabAccounts: GitLabAccount[]
+  githubAccounts: GitHubAccount[]
   dashboard: DashboardSettings
 }

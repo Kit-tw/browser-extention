@@ -1,7 +1,8 @@
 // Service Worker — plain TypeScript only, no React
 import { fetchJiraIssues } from '../services/jira.service'
 import { fetchAssignedMRs, fetchAuthoredMRs, fetchReviewerMRs } from '../services/gitlab.service'
-import type { StoredSettings, JiraAccount, GitLabAccount } from '../types/settings.types'
+import { fetchAssignedPRs, fetchAuthoredPRs, fetchReviewRequestedPRs } from '../services/github.service'
+import type { StoredSettings, JiraAccount, GitLabAccount, GitHubAccount } from '../types/settings.types'
 
 const SYNC_ALARM = 'sync-data'
 const DEFAULT_INTERVAL_MINUTES = 5
@@ -112,6 +113,39 @@ async function syncGitLabAccount(account: GitLabAccount): Promise<void> {
   }
 }
 
+async function syncGitHubAccount(account: GitHubAccount): Promise<void> {
+  const { id, token } = account
+  if (!token) return
+
+  try {
+    const [assigned, authored, reviewRequested] = await Promise.all([
+      fetchAssignedPRs(token),
+      fetchAuthoredPRs(token),
+      fetchReviewRequestedPRs(token),
+    ])
+    await chrome.storage.local.set({
+      [`cache_github_${id}`]: {
+        assigned,
+        authored,
+        reviewRequested,
+        lastSync: new Date().toISOString(),
+        error: null,
+      },
+    })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error syncing GitHub'
+    await chrome.storage.local.set({
+      [`cache_github_${id}`]: {
+        assigned: [],
+        authored: [],
+        reviewRequested: [],
+        lastSync: null,
+        error: message,
+      },
+    })
+  }
+}
+
 async function runSync(): Promise<void> {
   const settings = await getSettings()
   if (!settings) return
@@ -119,6 +153,7 @@ async function runSync(): Promise<void> {
   const tasks: Promise<void>[] = []
   for (const account of settings.jiraAccounts) tasks.push(syncJiraAccount(account))
   for (const account of settings.gitlabAccounts) tasks.push(syncGitLabAccount(account))
+  for (const account of (settings.githubAccounts ?? [])) tasks.push(syncGitHubAccount(account))
   await Promise.allSettled(tasks)
 }
 

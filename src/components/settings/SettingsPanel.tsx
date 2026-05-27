@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react'
 import { useSettings } from '../../hooks/useSettings'
 import { testJiraConnection } from '../../services/jira.service'
 import { testGitLabConnection } from '../../services/gitlab.service'
+import { testGitHubConnection } from '../../services/github.service'
 import { BackgroundSettings } from './BackgroundSettings'
-import type { JiraAccount, GitLabAccount, WidgetId } from '../../types/settings.types'
+import type { JiraAccount, GitLabAccount, GitHubAccount, WidgetId } from '../../types/settings.types'
 
 // ── Shared form primitives ──────────────────────────────────────────────────
 
@@ -228,6 +229,68 @@ function GitLabAccountForm({
   )
 }
 
+// ── GitHub account form ───────────────────────────────────────────────────
+
+interface GitHubFormState { label: string; token: string }
+
+function GitHubAccountForm({
+  initial, onSave, onCancel,
+}: {
+  initial?: GitHubFormState
+  onSave: (f: GitHubFormState) => void
+  onCancel: () => void
+}) {
+  const [form, setForm] = useState<GitHubFormState>(initial ?? { label: '', token: '' })
+  const [testStatus, setTestStatus] = useState<TestStatus>(null)
+  const [testing, setTesting] = useState(false)
+
+  const handleTest = async () => {
+    setTesting(true)
+    setTestStatus(null)
+    const result = await testGitHubConnection(form.token)
+    setTestStatus({ ok: result.ok, message: result.ok ? `Connected as @${result.login}` : (result.error ?? 'Failed') })
+    setTesting(false)
+  }
+
+  const valid = form.label.trim() && form.token.trim()
+
+  return (
+    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3 mt-2">
+      <div>
+        <Label htmlFor="gh-label">Label</Label>
+        <TextInput id="gh-label" value={form.label} onChange={(v) => setForm((f) => ({ ...f, label: v }))} placeholder="Work GitHub" />
+      </div>
+      <div>
+        <Label htmlFor="gh-token">Personal Access Token</Label>
+        <PasswordInput id="gh-token" value={form.token} onChange={(v) => setForm((f) => ({ ...f, token: v }))} placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" />
+        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+          Requires <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1 rounded">repo</code> scope (or fine-grained read access to pull requests).
+        </p>
+      </div>
+      <TestResult status={testStatus} />
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={handleTest}
+          disabled={testing || !form.token}
+          className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          {testing ? 'Testing…' : 'Test'}
+        </button>
+        <button
+          onClick={() => onSave(form)}
+          disabled={!valid}
+          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+        >
+          Save
+        </button>
+        <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:underline">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Tab components ─────────────────────────────────────────────────────────
 
 function JiraTab() {
@@ -374,6 +437,68 @@ function GitLabTab() {
   )
 }
 
+function GitHubTab() {
+  const { githubAccounts, addGitHubAccount, updateGitHubAccount, removeGitHubAccount } = useSettings()
+  const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  function generateId() {
+    return Math.random().toString(36).slice(2) + Date.now().toString(36)
+  }
+
+  const handleAdd = (form: GitHubFormState) => {
+    addGitHubAccount({ id: generateId(), ...form } as GitHubAccount)
+    setAdding(false)
+    try { chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' }) } catch { /* ignore */ }
+  }
+
+  const handleEdit = (id: string, form: GitHubFormState) => {
+    updateGitHubAccount(id, form)
+    setEditingId(null)
+    try { chrome.runtime.sendMessage({ type: 'TRIGGER_SYNC' }) } catch { /* ignore */ }
+  }
+
+  return (
+    <div className="space-y-3">
+      {githubAccounts.map((account) => (
+        <div key={account.id}>
+          {editingId === account.id ? (
+            <GitHubAccountForm
+              initial={{ label: account.label, token: account.token }}
+              onSave={(f) => handleEdit(account.id, f)}
+              onCancel={() => setEditingId(null)}
+            />
+          ) : (
+            <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{account.label}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 truncate">github.com</p>
+              </div>
+              <button onClick={() => setEditingId(account.id)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0">Edit</button>
+              <button onClick={() => removeGitHubAccount(account.id)} className="text-xs text-red-500 dark:text-red-400 hover:underline shrink-0">Delete</button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {githubAccounts.length === 0 && !adding && (
+        <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No GitHub accounts configured.</p>
+      )}
+
+      {adding ? (
+        <GitHubAccountForm onSave={handleAdd} onCancel={() => setAdding(false)} />
+      ) : (
+        <button
+          onClick={() => setAdding(true)}
+          className="w-full py-2 text-sm text-blue-600 dark:text-blue-400 border border-dashed border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+        >
+          + Add Account
+        </button>
+      )}
+    </div>
+  )
+}
+
 function DashboardTab() {
   const { dashboard, updateDashboard } = useSettings()
 
@@ -457,7 +582,7 @@ function DashboardTab() {
 
 // ── Main SettingsPanel ─────────────────────────────────────────────────────
 
-type Tab = 'jira' | 'gitlab' | 'dashboard' | 'background'
+type Tab = 'jira' | 'gitlab' | 'github' | 'dashboard' | 'background'
 
 interface SettingsPanelProps {
   open: boolean
@@ -482,6 +607,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const tabs: { id: Tab; label: string }[] = [
     { id: 'jira', label: 'Jira' },
     { id: 'gitlab', label: 'GitLab' },
+    { id: 'github', label: 'GitHub' },
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'background', label: 'Background' },
   ]
@@ -532,6 +658,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {activeTab === 'jira' && <JiraTab />}
           {activeTab === 'gitlab' && <GitLabTab />}
+          {activeTab === 'github' && <GitHubTab />}
           {activeTab === 'dashboard' && <DashboardTab />}
           {activeTab === 'background' && <BackgroundSettings />}
         </div>

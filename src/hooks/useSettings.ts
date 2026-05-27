@@ -3,6 +3,7 @@ import { useSettingsStore } from '../store/settings.store'
 import type {
   JiraAccount,
   GitLabAccount,
+  GitHubAccount,
   DashboardSettings,
   StoredSettings,
   WidgetId,
@@ -11,7 +12,7 @@ import type {
   BgEntry,
 } from '../types/settings.types'
 
-export type { JiraAccount, GitLabAccount, DashboardSettings, StoredSettings, WidgetId, WidgetPosition, BackgroundSettings, BgEntry }
+export type { JiraAccount, GitLabAccount, GitHubAccount, DashboardSettings, StoredSettings, WidgetId, WidgetPosition, BackgroundSettings, BgEntry }
 
 export function useSettings() {
   const store = useSettingsStore()
@@ -25,6 +26,7 @@ export function useSettings() {
   return {
     jiraAccounts: store.jiraAccounts,
     gitlabAccounts: store.gitlabAccounts,
+    githubAccounts: store.githubAccounts,
     dashboard: store.dashboard,
     initialized: store.initialized,
     addJiraAccount: store.addJiraAccount,
@@ -33,6 +35,9 @@ export function useSettings() {
     addGitLabAccount: store.addGitLabAccount,
     updateGitLabAccount: store.updateGitLabAccount,
     removeGitLabAccount: store.removeGitLabAccount,
+    addGitHubAccount: store.addGitHubAccount,
+    updateGitHubAccount: store.updateGitHubAccount,
+    removeGitHubAccount: store.removeGitHubAccount,
     updateDashboard: store.updateDashboard,
     setCollapsed: store.setCollapsed,
     setWidgetPosition: store.setWidgetPosition,

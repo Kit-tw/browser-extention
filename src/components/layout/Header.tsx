@@ -1,33 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useCallback } from 'react'
 import { useSettings } from '../../hooks/useSettings'
 
 interface HeaderProps {
   onOpenSettings: () => void
-}
-
-function getGreeting(): string {
-  const h = new Date().getHours()
-  if (h < 5)  return 'still up?'
-  if (h < 12) return 'good morning'
-  if (h < 17) return 'good afternoon'
-  if (h < 21) return 'good evening'
-  return 'good night'
-}
-
-function LiveClock() {
-  const fmt = () =>
-    new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-  const [time, setTime] = useState(fmt)
-  useEffect(() => {
-    const id = setInterval(() => setTime(fmt()), 1000)
-    return () => clearInterval(id)
-  }, [])
-  return (
-    <span className="font-mono text-lg font-medium tabular-nums tracking-tight
-      text-[#111520] dark:text-[#D4DAE8]">
-      {time}
-    </span>
-  )
 }
 
 function HexLogo() {
@@ -59,10 +34,6 @@ export function Header({ onOpenSettings }: HeaderProps) {
 
   const themeLabel = { light: '☀', dark: '☾', system: '⊙' }
 
-  const today = new Date().toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric',
-  })
-
   return (
     <header className="
       relative z-10 h-11 shrink-0 flex items-center gap-4 px-5
@@ -77,22 +48,6 @@ export function Header({ onOpenSettings }: HeaderProps) {
           Dev Dashboard
         </span>
       </div>
-
-      {/* Separator */}
-      <div className="h-3.5 w-px bg-[#E8EBF0] dark:bg-[#1E2330] shrink-0" />
-
-      {/* Clock + greeting */}
-      <div className="flex items-baseline gap-2.5 shrink-0">
-        <LiveClock />
-        <span className="font-mono text-[11px] text-[#9BA3B0] dark:text-[#8B95A8] hidden sm:inline">
-          {getGreeting()}
-        </span>
-      </div>
-
-      {/* Date */}
-      <span className="font-mono text-[10px] text-[#C2CAD8] dark:text-[#5A6578] hidden lg:inline">
-        {today}
-      </span>
 
       <div className="flex-1" />
 
