@@ -5,6 +5,7 @@ import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { Header } from '../components/layout/Header'
 import { Dashboard } from '../components/layout/Dashboard'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
+import { FloatingNotes } from '../components/FloatingNotes'
 
 function applyTheme(theme: 'light' | 'dark' | 'system') {
   const root = document.documentElement
@@ -160,10 +161,11 @@ export function NewTabApp() {
       </div>
 
       {/* Content */}
-      <Header onOpenSettings={() => setSettingsOpen(true)} />
+      <Header onOpenSettings={() => setSettingsOpen(true)} onToggleShortcuts={() => setShortcutsOpen((v) => !v)} />
       <Dashboard />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {shortcutsOpen && <ShortcutsHelp onClose={() => setShortcutsOpen(false)} />}
+      <FloatingNotes />
     </div>
   )
 }

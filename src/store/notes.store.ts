@@ -78,9 +78,8 @@ export const useNotesStore = create<NotesState>((set, get) => ({
 
   deleteNote: (id) => {
     const current = get()
-    let updated = current.notes.filter((n) => n.id !== id)
-    if (updated.length === 0) updated = [makeNote('Scratch')]
-    const activeNoteId = current.activeNoteId === id ? updated[0].id : current.activeNoteId
+    const updated = current.notes.filter((n) => n.id !== id)
+    const activeNoteId = current.activeNoteId === id ? (updated[0]?.id ?? null) : current.activeNoteId
     set({ notes: updated, activeNoteId })
     writeNotes(updated)
   },

@@ -13,9 +13,10 @@ function highlightWidget(widgetKey: string) {
   })
 }
 
-function expandWidget(widgetKey: 'note' | 'todo') {
+function expandWidget(widgetKey: string) {
   const { dashboard, setCollapsed } = useSettingsStore.getState()
-  if (dashboard.collapsed[widgetKey]) setCollapsed(widgetKey, false)
+  const collapsed = (dashboard.collapsed as Record<string, boolean>)[widgetKey]
+  if (collapsed) setCollapsed(widgetKey as never, false)
 }
 
 function focusIn(widgetKey: string, selector: string) {
@@ -61,13 +62,11 @@ export function useKeyboardShortcuts(onToggleHelp: () => void, isHelpOpen: boole
         onToggleHelpRef.current()
       } else if (key === 'j' || key === 'J') {
         e.preventDefault()
+        expandWidget('jira')
         highlightWidget('jira')
       } else if (key === 'n' || key === 'N') {
         e.preventDefault()
-        expandWidget('note')
-        highlightWidget('note')
-        // Ask NoteWidget to enter rename mode on the active tab
-        document.dispatchEvent(new CustomEvent('note:focus-title'))
+        document.dispatchEvent(new CustomEvent('note:compose'))
       } else if (key === 't' || key === 'T') {
         e.preventDefault()
         expandWidget('todo')
@@ -80,19 +79,23 @@ export function useKeyboardShortcuts(onToggleHelp: () => void, isHelpOpen: boole
         const hasGitHub = githubAccounts.length > 0
         if (!hasGitLab && !hasGitHub) return
 
+        const activate = (target: 'gitlab' | 'github') => {
+          expandWidget(target)
+          highlightWidget(target)
+        }
+
         if (hasGitLab && !hasGitHub) {
-          highlightWidget('gitlab')
+          activate('gitlab')
         } else if (!hasGitLab && hasGitHub) {
-          highlightWidget('github')
+          activate('github')
         } else {
-          // Both: cycle on consecutive G presses within 1 second
           const now = Date.now()
           const prev = gCycleRef.current
           if (prev && now - prev.time < 1000 && prev.last === 'gitlab') {
-            highlightWidget('github')
+            activate('github')
             gCycleRef.current = { time: now, last: 'github' }
           } else {
-            highlightWidget('gitlab')
+            activate('gitlab')
             gCycleRef.current = { time: now, last: 'gitlab' }
           }
         }

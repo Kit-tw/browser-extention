@@ -195,8 +195,10 @@ function JiraAccountWidget({ account, idx, dashboard }: {
     useCallback((w) => setExtendedPosition(posKey, { ...pos, w }), [posKey, pos]),
   )
 
+  const collapsed = dashboard.collapsed.jira
   const style: React.CSSProperties = {
-    position: 'absolute', left: pos.x, top: pos.y, width: renderW || undefined,
+    position: 'absolute', left: pos.x, top: pos.y,
+    width: collapsed ? 'max-content' : (renderW || undefined),
     transform: CSS.Translate.toString(transform), zIndex: isDragging ? 100 : 1, opacity: isDragging ? 0.85 : 1,
   }
 
@@ -207,7 +209,7 @@ function JiraAccountWidget({ account, idx, dashboard }: {
 
   return (
     <div ref={setNodeRef} style={{ ...style, animationDelay: `${idx * 80}ms` }} className="widget-enter" data-widget="jira">
-      <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
+      {!collapsed && <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />}
       <WidgetCard
         title={`Jira — ${account.label}`} icon={<JiraIcon />}
         collapsed={dashboard.collapsed.jira} onToggleCollapse={() => setCollapsed('jira', !dashboard.collapsed.jira)}
@@ -238,8 +240,10 @@ function GitLabAccountWidget({ account, idx, dashboard }: {
     useCallback((w) => setExtendedPosition(posKey, { ...pos, w }), [posKey, pos]),
   )
 
+  const collapsed = dashboard.collapsed.gitlab
   const style: React.CSSProperties = {
-    position: 'absolute', left: pos.x, top: pos.y, width: renderW || undefined,
+    position: 'absolute', left: pos.x, top: pos.y,
+    width: collapsed ? 'max-content' : (renderW || undefined),
     transform: CSS.Translate.toString(transform), zIndex: isDragging ? 100 : 1, opacity: isDragging ? 0.85 : 1,
   }
 
@@ -251,7 +255,7 @@ function GitLabAccountWidget({ account, idx, dashboard }: {
 
   return (
     <div ref={setNodeRef} style={{ ...style, animationDelay: `${80 + idx * 80}ms` }} className="widget-enter" data-widget="gitlab">
-      <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
+      {!collapsed && <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />}
       <WidgetCard
         title={`GitLab — ${account.label}`} icon={<GitLabIcon />}
         collapsed={dashboard.collapsed.gitlab} onToggleCollapse={() => setCollapsed('gitlab', !dashboard.collapsed.gitlab)}
@@ -281,8 +285,10 @@ function GitHubAccountWidget({ account, idx, dashboard }: {
     useCallback((w) => setExtendedPosition(posKey, { ...pos, w }), [posKey, pos]),
   )
 
+  const collapsed = dashboard.collapsed.github ?? false
   const style: React.CSSProperties = {
-    position: 'absolute', left: pos.x, top: pos.y, width: renderW || undefined,
+    position: 'absolute', left: pos.x, top: pos.y,
+    width: collapsed ? 'max-content' : (renderW || undefined),
     transform: CSS.Translate.toString(transform), zIndex: isDragging ? 100 : 1, opacity: isDragging ? 0.85 : 1,
   }
 
@@ -294,7 +300,7 @@ function GitHubAccountWidget({ account, idx, dashboard }: {
 
   return (
     <div ref={setNodeRef} style={{ ...style, animationDelay: `${160 + idx * 80}ms` }} className="widget-enter" data-widget="github">
-      <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
+      {!collapsed && <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />}
       <WidgetCard
         title={`GitHub — ${account.label}`} icon={<GitHubIcon />}
         collapsed={dashboard.collapsed.github ?? false}
@@ -319,7 +325,7 @@ function NoteWidgetItem({ dashboard }: { dashboard: DashboardSettings }) {
   )
 
   const style: React.CSSProperties = {
-    position: 'absolute', left: pos.x, top: pos.y, width: renderW || undefined,
+    position: 'absolute', left: pos.x, bottom: pos.y, width: renderW || undefined,
     transform: CSS.Translate.toString(transform), zIndex: isDragging ? 100 : 1, opacity: isDragging ? 0.85 : 1,
   }
 
@@ -347,14 +353,16 @@ function TodoWidgetItem({ dashboard }: { dashboard: DashboardSettings }) {
     useCallback((w) => setWidgetPosition('todo', { ...pos, w }), [pos, setWidgetPosition]),
   )
 
+  const collapsed = dashboard.collapsed.todo
   const style: React.CSSProperties = {
-    position: 'absolute', left: pos.x, top: pos.y, width: renderW || undefined,
+    position: 'absolute', left: pos.x, top: pos.y,
+    width: collapsed ? 'max-content' : (renderW || undefined),
     transform: CSS.Translate.toString(transform), zIndex: isDragging ? 100 : 1, opacity: isDragging ? 0.85 : 1,
   }
 
   return (
     <div ref={setNodeRef} style={{ ...style, animationDelay: '160ms' }} className="widget-enter" data-widget="todo">
-      <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
+      {!collapsed && <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />}
       <WidgetCard
         title="Todos" icon={<TodoIcon />}
         collapsed={dashboard.collapsed.todo} onToggleCollapse={() => setCollapsed('todo', !dashboard.collapsed.todo)}
@@ -406,10 +414,12 @@ export function Dashboard() {
 
     if (!current) return
 
+    // Note is bottom-anchored, so dragging down should decrease y (distance from bottom)
+    const yDelta = id === 'note' ? -delta.y : delta.y
     const updated: WidgetPosition = {
       ...current,
       x: Math.max(0, current.x + delta.x),
-      y: Math.max(0, current.y + delta.y),
+      y: Math.max(0, current.y + yDelta),
     }
 
     if (id === 'todo' || id === 'note') {
@@ -439,7 +449,6 @@ export function Dashboard() {
         ))}
 
         {dashboard.widgets.todo && <TodoWidgetItem dashboard={dashboard} />}
-        {dashboard.widgets.note && <NoteWidgetItem dashboard={dashboard} />}
       </main>
     </DndContext>
   )

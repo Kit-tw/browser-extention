@@ -81,8 +81,9 @@ export function WidgetCard({
         </span>
 
         {/* Title */}
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em]
-          text-[#6B7280] dark:text-[#8B95A8] truncate flex-1 select-none">
+        <span className={`font-mono text-[10px] font-semibold uppercase tracking-[0.1em]
+          text-[#6B7280] dark:text-[#8B95A8] select-none
+          ${collapsed ? 'whitespace-nowrap' : 'flex-1 truncate'}`}>
           {title}
         </span>
 
@@ -121,8 +122,8 @@ export function WidgetCard({
       )}
 
       {/* Body */}
-      <div className={`overflow-hidden transition-all duration-200 ease-in-out ${collapsed ? 'max-h-0' : 'max-h-[2000px]'}`}>
-        <div className="px-3 pt-2.5 pb-1.5">
+      <div className={`overflow-hidden transition-[max-height] duration-300 ease-out ${collapsed ? 'max-h-0 w-0' : 'max-h-[2000px]'}`}>
+        <div className={`px-3 pt-2.5 pb-1.5 transition-opacity duration-200 ${collapsed ? 'opacity-0' : 'opacity-100'}`}>
           {children}
         </div>
 

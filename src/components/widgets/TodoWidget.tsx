@@ -16,161 +16,156 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTodos } from '../../hooks/useTodos'
-import type { Todo, TodoPriority } from '../../types/todo.types'
-import { isOverdue } from '../../utils/time'
-import type { TodoFilter } from '../../hooks/useTodos'
+import type { Todo } from '../../types/todo.types'
 
-function priorityDotColor(priority: TodoPriority | undefined): string {
-  switch (priority) {
-    case 'high':
-      return 'bg-red-500'
-    case 'medium':
-      return 'bg-yellow-400'
-    case 'low':
-      return 'bg-blue-400'
-    default:
-      return 'bg-transparent'
-  }
+function CheckCircle({ checking, onCheck }: { checking: boolean; onCheck: () => void }) {
+  return (
+    <button
+      onClick={onCheck}
+      disabled={checking}
+      className={`
+        shrink-0 w-[18px] h-[18px] rounded-full border-2
+        flex items-center justify-center
+        transition-all duration-150
+        ${checking
+          ? 'border-[#4F90F0] bg-[#4F90F0]'
+          : 'border-[#C2CAD8] dark:border-[#3A4555] hover:border-[#4F90F0] hover:bg-[#4F90F0]/10 group-hover/row:border-[#4F90F0]/60'
+        }
+      `}
+      aria-label="Complete task"
+    >
+      <svg
+        className={`w-2.5 h-2.5 transition-opacity duration-100
+          ${checking
+            ? 'text-white animate-check-in opacity-100'
+            : 'text-[#4F90F0] opacity-0 group-hover/row:opacity-50'
+          }`}
+        viewBox="0 0 12 12"
+        fill="none"
+      >
+        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </button>
+  )
 }
 
-interface SortableTodoRowProps {
+interface RowProps {
   todo: Todo
-  onToggle: (id: string) => void
   onDelete: (id: string) => void
   onUpdate: (id: string, partial: Partial<Omit<Todo, 'id' | 'createdAt'>>) => void
-  isDragEnabled: boolean
 }
 
-function SortableTodoRow({
-  todo,
-  onToggle,
-  onDelete,
-  onUpdate,
-  isDragEnabled,
-}: SortableTodoRowProps) {
+function SortableTodoRow({ todo, onDelete, onUpdate }: RowProps) {
+  const [checking, setChecking] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editText, setEditText] = useState(todo.text)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: todo.id,
-    disabled: !isDragEnabled,
+    disabled: checking,
   })
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.45 : 1,
+  }
+
+  const handleCheck = () => {
+    if (checking) return
+    setChecking(true)
+    setTimeout(() => onDelete(todo.id), 420)
   }
 
   const commitEdit = useCallback(() => {
     const trimmed = editText.trim()
-    if (trimmed && trimmed !== todo.text) {
-      onUpdate(todo.id, { text: trimmed })
-    } else {
-      setEditText(todo.text)
-    }
+    if (trimmed && trimmed !== todo.text) onUpdate(todo.id, { text: trimmed })
+    else setEditText(todo.text)
     setEditing(false)
   }, [editText, todo.id, todo.text, onUpdate])
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleEditKey = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') commitEdit()
-    if (e.key === 'Escape') {
-      setEditText(todo.text)
-      setEditing(false)
-    }
+    if (e.key === 'Escape') { setEditText(todo.text); setEditing(false) }
   }
-
-  const overdue = !todo.done && isOverdue(todo.dueDate)
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0 group ${isDragging ? 'z-10 relative' : ''}`}
+      className={`
+        group/row flex items-center gap-2.5 py-2
+        border-b border-[#F0F3F7] dark:border-[#1A1E28] last:border-0
+        ${checking ? 'animate-todo-done pointer-events-none' : ''}
+        ${isDragging ? 'z-10 relative' : ''}
+      `}
     >
-      {/* Drag handle */}
-      {isDragEnabled && (
-        <button
-          {...attributes}
-          {...listeners}
-          className="shrink-0 text-gray-300 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-300 cursor-grab active:cursor-grabbing touch-none"
-          aria-label="Drag to reorder"
-          tabIndex={-1}
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" d="M4 8h16M4 16h16" />
-          </svg>
-        </button>
-      )}
+      {/* Drag grip */}
+      <button
+        {...attributes}
+        {...listeners}
+        tabIndex={-1}
+        aria-label="Drag to reorder"
+        className="shrink-0 cursor-grab active:cursor-grabbing touch-none
+          text-transparent group-hover/row:text-[#C2CAD8] dark:group-hover/row:text-[#3A4555]
+          transition-colors duration-150"
+      >
+        <svg className="w-3 h-3.5" viewBox="0 0 12 16" fill="currentColor">
+          <circle cx="3" cy="3"  r="1.1" /><circle cx="9" cy="3"  r="1.1" />
+          <circle cx="3" cy="8"  r="1.1" /><circle cx="9" cy="8"  r="1.1" />
+          <circle cx="3" cy="13" r="1.1" /><circle cx="9" cy="13" r="1.1" />
+        </svg>
+      </button>
 
       {/* Checkbox */}
-      <input
-        type="checkbox"
-        checked={todo.done}
-        onChange={() => onToggle(todo.id)}
-        className="shrink-0 w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer"
-        aria-label={`Mark "${todo.text}" as ${todo.done ? 'active' : 'done'}`}
-      />
+      <CheckCircle checking={checking} onCheck={handleCheck} />
 
-      {/* Text / inline edit */}
+      {/* Text */}
       <div className="flex-1 min-w-0">
         {editing ? (
           <input
             ref={inputRef}
             value={editText}
-            onChange={(e) => setEditText(e.target.value)}
+            onChange={e => setEditText(e.target.value)}
             onBlur={commitEdit}
-            onKeyDown={handleKeyDown}
-            className="w-full text-sm bg-white dark:bg-gray-700 border border-blue-400 rounded px-1 py-0.5 outline-none text-gray-800 dark:text-gray-100"
+            onKeyDown={handleEditKey}
             autoFocus
+            className="w-full text-sm bg-transparent outline-none
+              border-b border-[#4F90F0]/40
+              text-[#374151] dark:text-[#CDD3DF]"
           />
         ) : (
           <span
-            className={`text-sm cursor-pointer ${
-              todo.done
-                ? 'line-through text-gray-400 dark:text-gray-400'
-                : 'text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400'
-            }`}
             onClick={() => {
+              if (checking) return
               setEditing(true)
               setEditText(todo.text)
               setTimeout(() => inputRef.current?.focus(), 0)
             }}
+            className={`
+              text-sm cursor-pointer leading-snug select-none
+              transition-colors duration-200
+              ${checking
+                ? 'line-through text-[#C2CAD8] dark:text-[#3A4555]'
+                : 'text-[#374151] dark:text-[#CDD3DF] hover:text-[#4F90F0] dark:hover:text-[#4F90F0]'
+              }
+            `}
           >
             {todo.text}
           </span>
         )}
-
-        {/* Due date chip */}
-        {todo.dueDate && (
-          <span
-            className={`ml-1 text-xs px-1.5 py-0.5 rounded ${
-              overdue
-                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-            }`}
-          >
-            {todo.dueDate}
-          </span>
-        )}
       </div>
 
-      {/* Priority dot */}
-      {todo.priority && (
-        <span
-          className={`shrink-0 w-2 h-2 rounded-full ${priorityDotColor(todo.priority)}`}
-          title={`Priority: ${todo.priority}`}
-        />
-      )}
-
-      {/* Delete button */}
+      {/* Delete */}
       <button
         onClick={() => onDelete(todo.id)}
-        className="shrink-0 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-        aria-label={`Delete "${todo.text}"`}
+        aria-label="Delete"
+        className="shrink-0 opacity-0 group-hover/row:opacity-100 transition-opacity
+          text-[#C2CAD8] dark:text-[#3A4555]
+          hover:text-red-400 dark:hover:text-red-400"
       >
-        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
@@ -178,163 +173,73 @@ function SortableTodoRow({
   )
 }
 
-const FILTER_TABS: { label: string; value: TodoFilter }[] = [
-  { label: 'All', value: 'all' },
-  { label: 'Active', value: 'active' },
-  { label: 'Done', value: 'done' },
-]
-
 export function TodoWidget() {
-  const { todos, filteredTodos, filter, setFilter, addTodo, toggleDone, deleteTodo, updateTodo, reorderTodos } =
-    useTodos()
-
+  const { todos, addTodo, deleteTodo, updateTodo, reorderTodos } = useTodos()
   const [inputText, setInputText] = useState('')
-  const [inputDueDate, setInputDueDate] = useState('')
-  const [inputPriority, setInputPriority] = useState<TodoPriority | ''>('')
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
-  const handleAdd = useCallback(
-    (e?: React.FormEvent) => {
-      e?.preventDefault()
-      const trimmed = inputText.trim()
-      if (!trimmed) return
-      addTodo(
-        trimmed,
-        inputDueDate || undefined,
-        (inputPriority as TodoPriority) || undefined,
-      )
-      setInputText('')
-      setInputDueDate('')
-      setInputPriority('')
-    },
-    [inputText, inputDueDate, inputPriority, addTodo],
-  )
-
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') handleAdd()
-  }
+  const handleAdd = useCallback((e?: React.FormEvent) => {
+    e?.preventDefault()
+    const trimmed = inputText.trim()
+    if (!trimmed) return
+    addTodo(trimmed)
+    setInputText('')
+  }, [inputText, addTodo])
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (over && active.id !== over.id) {
-      reorderTodos(String(active.id), String(over.id))
-    }
+    if (over && active.id !== over.id) reorderTodos(String(active.id), String(over.id))
   }
-
-  const isDragEnabled = filter === 'all'
-  const activeCount = todos.filter((t) => !t.done).length
 
   return (
     <div>
-      {/* Active count summary */}
-      {activeCount > 0 && (
-        <p className="text-xs text-gray-400 dark:text-gray-400 mb-2">
-          {activeCount} active task{activeCount !== 1 ? 's' : ''}
-        </p>
-      )}
-
-      {/* Input form */}
-      <form onSubmit={handleAdd} className="flex flex-col gap-1.5 mb-3">
-        <div className="flex gap-1.5">
-          <input
-            type="text"
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Add a task..."
-            className="flex-1 min-w-0 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <button
-            type="submit"
-            disabled={!inputText.trim()}
-            className="shrink-0 px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            Add
-          </button>
-        </div>
-
-        <div className="flex gap-1.5">
-          <input
-            type="date"
-            value={inputDueDate}
-            onChange={(e) => setInputDueDate(e.target.value)}
-            className="flex-1 min-w-0 text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <select
-            value={inputPriority}
-            onChange={(e) => setInputPriority(e.target.value as TodoPriority | '')}
-            className="text-xs border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Priority</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
+      {/* Add form */}
+      <form onSubmit={handleAdd} className="flex gap-2 mb-3">
+        <input
+          type="text"
+          value={inputText}
+          onChange={e => setInputText(e.target.value)}
+          placeholder="Add a task…"
+          className="flex-1 min-w-0 text-sm
+            bg-[#F7F8FA] dark:bg-[#1A1E28]
+            border border-[#E2E6EF] dark:border-[#252D3D] rounded-lg
+            px-3 py-1.5
+            text-[#374151] dark:text-[#CDD3DF]
+            placeholder-[#C2CAD8] dark:placeholder-[#3A4555]
+            outline-none focus:ring-1 focus:ring-[#4F90F0]/50 focus:border-[#4F90F0]/40
+            transition-colors"
+        />
+        <button
+          type="submit"
+          disabled={!inputText.trim()}
+          className="shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium
+            bg-[#4F90F0] hover:bg-[#3B7DE8] text-white
+            disabled:opacity-35 disabled:cursor-not-allowed
+            transition-colors"
+        >
+          Add
+        </button>
       </form>
 
-      {/* Filter tabs */}
-      <div className="flex gap-1 mb-2">
-        {FILTER_TABS.map((tab) => (
-          <button
-            key={tab.value}
-            onClick={() => setFilter(tab.value)}
-            className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
-              filter === tab.value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* List */}
+      <div className="max-h-64 overflow-y-auto overflow-x-hidden pr-1 -mr-1">
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={todos.map(t => t.id)} strategy={verticalListSortingStrategy}>
+            {todos.map(todo => (
+              <SortableTodoRow
+                key={todo.id}
+                todo={todo}
+                onDelete={deleteTodo}
+                onUpdate={updateTodo}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
-
-      {/* Todo list */}
-      {filteredTodos.length === 0 ? (
-        <EmptyTodoState filter={filter} />
-      ) : (
-        <div className="max-h-64 overflow-y-auto pr-1 -mr-1">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={filteredTodos.map((t) => t.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {filteredTodos.map((todo) => (
-                <SortableTodoRow
-                  key={todo.id}
-                  todo={todo}
-                  onToggle={toggleDone}
-                  onDelete={deleteTodo}
-                  onUpdate={updateTodo}
-                  isDragEnabled={isDragEnabled}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function EmptyTodoState({ filter }: { filter: TodoFilter }) {
-  const messages: Record<TodoFilter, string> = {
-    all: 'No tasks yet. Add one above!',
-    active: 'No active tasks.',
-    done: 'No completed tasks yet.',
-  }
-  return (
-    <div className="flex items-center justify-center py-6 text-gray-400 dark:text-gray-400">
-      <p className="text-sm">{messages[filter]}</p>
     </div>
   )
 }

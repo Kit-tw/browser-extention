@@ -27,7 +27,7 @@ const DEFAULT_POSITIONS: Record<WidgetId, WidgetPosition> = {
   jira:   { x: 20,  y: 80,  w: 420, h: 0 },
   gitlab: { x: 460, y: 80,  w: 420, h: 0 },
   todo:   { x: 900, y: 80,  w: 380, h: 0 },
-  note:   { x: 20,  y: 520, w: 420, h: 0 },
+  note:   { x: 20,  y: 20,  w: 420, h: 0 },
 }
 
 const DEFAULT_BACKGROUND: BackgroundSettings = {

@@ -21,6 +21,43 @@
   }
 }
 
+/* Themed scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.30);
+}
+
+html.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+
+html.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+
 /* Noise texture overlay for depth */
 .noise-bg::before {
   content: '';
@@ -95,6 +132,46 @@ html.has-bg header button:hover {
 html.has-bg .clock-text {
   color: rgba(255, 255, 255, 0.85) !important;
   text-shadow: 0 1px 16px rgba(0, 0, 0, 0.65);
+}
+
+/* Floating notes — paper entrance and panel slide-up */
+@keyframes note-paper-in {
+  from { opacity: 0; transform: scale(0.7) translateX(16px); }
+  to   { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+@keyframes compose-panel-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-note-paper-in {
+  animation: note-paper-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-compose-panel-in {
+  animation: compose-panel-in 0.2s ease-out forwards;
+}
+
+/* Todo — check-and-remove animation */
+@keyframes todo-done {
+  0%   { opacity: 1; transform: translateX(0);    max-height: 48px; }
+  35%  { opacity: 0.6; transform: translateX(8px); }
+  100% { opacity: 0;   transform: translateX(24px); max-height: 0; padding-top: 0; padding-bottom: 0; }
+}
+
+@keyframes check-mark-in {
+  from { transform: scale(0) rotate(-20deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+
+.animate-todo-done {
+  animation: todo-done 0.42s ease-in forwards;
+  overflow: hidden;
+}
+
+.animate-check-in {
+  animation: check-mark-in 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 /* Scanline effect for dark mode header */
