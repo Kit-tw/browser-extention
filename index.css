@@ -56,6 +56,18 @@ html.has-bg.dark .widget-card-root {
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4) !important;
 }
 
+/* Keyboard-shortcut highlight pulse on widget cards */
+@keyframes widget-highlight {
+  0%   { outline: 2px solid rgba(79, 144, 240, 0); outline-offset: 0px; }
+  20%  { outline: 2px solid rgba(79, 144, 240, 0.85); outline-offset: 3px; }
+  100% { outline: 2px solid rgba(79, 144, 240, 0); outline-offset: 3px; }
+}
+
+.widget-highlight {
+  animation: widget-highlight 0.85s ease-out forwards;
+  border-radius: 8px;
+}
+
 /* Scanline effect for dark mode header */
 .dark .header-scanlines {
   background-image: repeating-linear-gradient(

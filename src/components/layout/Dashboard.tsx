@@ -206,7 +206,7 @@ function JiraAccountWidget({ account, idx, dashboard }: {
     : null
 
   return (
-    <div ref={setNodeRef} style={{ ...style, animationDelay: `${idx * 80}ms` }} className="widget-enter">
+    <div ref={setNodeRef} style={{ ...style, animationDelay: `${idx * 80}ms` }} className="widget-enter" data-widget="jira">
       <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
       <WidgetCard
         title={`Jira — ${account.label}`} icon={<JiraIcon />}
@@ -250,7 +250,7 @@ function GitLabAccountWidget({ account, idx, dashboard }: {
     : null
 
   return (
-    <div ref={setNodeRef} style={{ ...style, animationDelay: `${80 + idx * 80}ms` }} className="widget-enter">
+    <div ref={setNodeRef} style={{ ...style, animationDelay: `${80 + idx * 80}ms` }} className="widget-enter" data-widget="gitlab">
       <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
       <WidgetCard
         title={`GitLab — ${account.label}`} icon={<GitLabIcon />}
@@ -293,7 +293,7 @@ function GitHubAccountWidget({ account, idx, dashboard }: {
     : null
 
   return (
-    <div ref={setNodeRef} style={{ ...style, animationDelay: `${160 + idx * 80}ms` }} className="widget-enter">
+    <div ref={setNodeRef} style={{ ...style, animationDelay: `${160 + idx * 80}ms` }} className="widget-enter" data-widget="github">
       <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
       <WidgetCard
         title={`GitHub — ${account.label}`} icon={<GitHubIcon />}
@@ -324,7 +324,7 @@ function NoteWidgetItem({ dashboard }: { dashboard: DashboardSettings }) {
   }
 
   return (
-    <div ref={setNodeRef} style={{ ...style, animationDelay: '240ms' }} className="widget-enter">
+    <div ref={setNodeRef} style={{ ...style, animationDelay: '240ms' }} className="widget-enter" data-widget="note">
       <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
       <WidgetCard
         title="Notes" icon={<NoteIcon />}
@@ -353,7 +353,7 @@ function TodoWidgetItem({ dashboard }: { dashboard: DashboardSettings }) {
   }
 
   return (
-    <div ref={setNodeRef} style={{ ...style, animationDelay: '160ms' }} className="widget-enter">
+    <div ref={setNodeRef} style={{ ...style, animationDelay: '160ms' }} className="widget-enter" data-widget="todo">
       <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />
       <WidgetCard
         title="Todos" icon={<TodoIcon />}

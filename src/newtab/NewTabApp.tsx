@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useSettings } from '../hooks/useSettings'
 import { useBackground } from '../hooks/useBackground'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { Header } from '../components/layout/Header'
 import { Dashboard } from '../components/layout/Dashboard'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
@@ -21,10 +22,70 @@ function applyTheme(theme: 'light' | 'dark' | 'system') {
   }
 }
 
+function ShortcutsHelp({ onClose }: { onClose: () => void }) {
+  const shortcuts = [
+    { key: 'J', desc: 'Jump to Jira widget' },
+    { key: 'G', desc: 'Jump to GitLab / GitHub (press twice to cycle)' },
+    { key: 'N', desc: 'Jump to Notes — focuses the tab title (rename mode)' },
+    { key: 'T', desc: 'Jump to Todo — focuses the input field' },
+    { key: '?', desc: 'Toggle this shortcuts reference' },
+    { key: 'Esc', desc: 'Blur active input  ·  close this panel' },
+  ]
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative bg-white dark:bg-[#141920] border border-[#E8EBF0] dark:border-[#1E2330]
+          rounded-xl shadow-2xl w-full max-w-sm mx-4 p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <span className="font-mono text-[11px] font-semibold tracking-[0.18em] uppercase
+            text-[#9BA3B0] dark:text-[#8B95A8]">
+            Keyboard shortcuts
+          </span>
+          <button
+            onClick={onClose}
+            className="w-6 h-6 flex items-center justify-center rounded
+              text-[#C2CAD8] dark:text-[#3A4555]
+              hover:text-[#374151] dark:hover:text-[#CDD3DF]
+              hover:bg-[#F4F6FA] dark:hover:bg-[#1A1E28] transition-colors"
+            aria-label="Close"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <ul className="space-y-2.5">
+          {shortcuts.map(({ key, desc }) => (
+            <li key={key} className="flex items-start gap-3">
+              <kbd className="shrink-0 inline-flex items-center justify-center
+                min-w-[28px] h-6 px-1.5 rounded
+                bg-[#F4F6FA] dark:bg-[#1E2535]
+                border border-[#DDE1E9] dark:border-[#2A3347]
+                font-mono text-[11px] font-semibold
+                text-[#374151] dark:text-[#CDD3DF]">
+                {key}
+              </kbd>
+              <span className="text-xs text-[#6B7585] dark:text-[#8B95A8] leading-6">{desc}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 export function NewTabApp() {
   const { dashboard, initialized } = useSettings()
   const { bg, blobUrl, hasBg } = useBackground()
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  useKeyboardShortcuts(() => setShortcutsOpen((v) => !v), shortcutsOpen)
 
   // Toggle has-bg on <html> so .widget-card-root CSS rules activate
   useEffect(() => {
@@ -102,6 +163,7 @@ export function NewTabApp() {
       <Header onOpenSettings={() => setSettingsOpen(true)} />
       <Dashboard />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      {shortcutsOpen && <ShortcutsHelp onClose={() => setShortcutsOpen(false)} />}
     </div>
   )
 }

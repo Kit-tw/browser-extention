@@ -16,6 +16,23 @@ export function NoteWidget() {
     el.style.height = `${el.scrollHeight}px`
   }, [activeNote?.body])
 
+  // Keep a ref so the stable event listener always sees the latest active note
+  const focusTitleRef = useRef<{ id: string; title: string } | null>(null)
+  useEffect(() => {
+    focusTitleRef.current = activeNoteId && activeNote
+      ? { id: activeNoteId, title: activeNote.title }
+      : null
+  })
+
+  useEffect(() => {
+    const handler = () => {
+      const note = focusTitleRef.current
+      if (note) startTabEdit(note.id, note.title)
+    }
+    document.addEventListener('note:focus-title', handler)
+    return () => document.removeEventListener('note:focus-title', handler)
+  }, [])
+
   const handleBodyChange = useCallback(
     (value: string) => {
       if (!activeNoteId) return

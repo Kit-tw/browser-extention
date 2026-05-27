@@ -42,7 +42,7 @@ export function WidgetCard({
   lastSync, error, loading, className = '', onRetry, dragHandleProps, accent,
 }: WidgetCardProps) {
   return (
-    <div className={`
+    <div tabIndex={-1} className={`
       widget-card-root
       relative group overflow-hidden rounded-lg
       bg-white dark:bg-[#1C2535]
