@@ -1,0 +1,68 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+}
+
+/* Noise texture overlay for depth */
+.noise-bg::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Widget entrance animation */
+@keyframes widget-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.widget-enter {
+  opacity: 0;
+  animation: widget-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Solid widget cards when a background image is active */
+html.has-bg .widget-card-root {
+  background: rgb(255, 255, 255) !important;
+  border-color: rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+html.has-bg.dark .widget-card-root {
+  background: rgb(28, 37, 53) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Scanline effect for dark mode header */
+.dark .header-scanlines {
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(255, 255, 255, 0.01) 2px,
+    rgba(255, 255, 255, 0.01) 4px
+  );
+}
