@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Skeleton } from '../shared/Skeleton'
 import { EmptyState } from '../shared/EmptyState'
 import { Badge } from '../shared/Badge'
@@ -90,6 +90,17 @@ interface JiraWidgetProps {
 }
 
 export function JiraWidget({ accountId: _accountId, accountLabel, issues, loading, baseUrl }: JiraWidgetProps) {
+  const [query, setQuery] = useState('')
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && query.trim()) {
+      window.open(`${baseUrl}/browse/${query.trim().toUpperCase()}`, '_blank', 'noopener,noreferrer')
+      setQuery('')
+    } else if (e.key === 'Escape') {
+      setQuery('')
+    }
+  }
+
   if (loading) {
     return <Skeleton lines={4} className="py-2" />
   }
@@ -106,6 +117,22 @@ export function JiraWidget({ accountId: _accountId, accountLabel, issues, loadin
 
   return (
     <div>
+      <input
+        type="text"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        onKeyDown={handleKeyDown}
+        placeholder="Jump to issue… e.g. TEST-123"
+        className="w-full mb-2 px-2 py-1 text-xs rounded
+          bg-gray-50 dark:bg-[#141820]
+          border border-gray-200 dark:border-[#252D3D]
+          text-gray-700 dark:text-gray-200
+          placeholder:text-gray-400 dark:placeholder:text-gray-500
+          focus:outline-none focus:border-blue-400 dark:focus:border-blue-500
+          transition-colors duration-150"
+        spellCheck={false}
+      />
+
       {accountLabel && (
         <p className="text-xs text-gray-400 dark:text-gray-400 mb-2">{accountLabel}</p>
       )}
