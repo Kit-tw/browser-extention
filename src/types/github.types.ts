@@ -11,4 +11,5 @@ export interface GitHubPR {
   repository_url: string
   user: { login: string }
   labels: { name: string; color: string }[]
+  ci_status: CIStatus
 }

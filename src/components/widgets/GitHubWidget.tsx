@@ -3,15 +3,30 @@ import { Skeleton } from '../shared/Skeleton'
 import { EmptyState } from '../shared/EmptyState'
 import { Badge } from '../shared/Badge'
 import { formatRelativeTime } from '../../utils/time'
-import type { GitHubPR } from '../../types/github.types'
+import type { CIStatus, GitHubPR } from '../../types/github.types'
 
 function repoName(repositoryUrl: string): string {
   return repositoryUrl.replace('https://api.github.com/repos/', '')
 }
 
+function ciStatusDot(status: CIStatus): { color: string; label: string } {
+  switch (status) {
+    case 'success':  return { color: 'bg-green-500',                      label: 'CI passed' }
+    case 'failure':  return { color: 'bg-red-500',                        label: 'CI failed' }
+    case 'pending':  return { color: 'bg-yellow-400 animate-pulse',       label: 'CI running' }
+    case 'neutral':  return { color: 'bg-gray-400',                       label: 'CI neutral' }
+    default:         return { color: 'bg-gray-300 dark:bg-gray-600',      label: 'No CI' }
+  }
+}
+
 function PRRow({ pr }: { pr: GitHubPR }) {
+  const dot = ciStatusDot(pr.ci_status)
   return (
     <div className="flex items-start gap-2 py-1.5 border-b border-gray-100 dark:border-gray-700 last:border-0">
+      <span
+        className={`mt-1.5 shrink-0 w-2 h-2 rounded-full ${dot.color}`}
+        title={dot.label}
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <a

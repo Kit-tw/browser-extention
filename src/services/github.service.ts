@@ -1,4 +1,4 @@
-import type { GitHubPR } from '../types/github.types'
+import type { CIStatus, GitHubPR } from '../types/github.types'
 
 export class GitHubApiError extends Error {
   constructor(
@@ -26,10 +26,35 @@ async function fetchWithToken<T>(url: string, token: string): Promise<T> {
   return res.json() as Promise<T>
 }
 
+async function fetchCIStatus(token: string, repositoryUrl: string, prNumber: number): Promise<CIStatus> {
+  try {
+    const pr = await fetchWithToken<{ head: { sha: string } }>(
+      `${repositoryUrl}/pulls/${prNumber}`,
+      token,
+    )
+    const { check_runs } = await fetchWithToken<{
+      check_runs: Array<{ status: string; conclusion: string | null }>
+    }>(`${repositoryUrl}/commits/${pr.head.sha}/check-runs?per_page=100`, token)
+
+    if (check_runs.length === 0) return null
+    if (check_runs.some(r => r.conclusion === 'failure' || r.conclusion === 'timed_out' || r.conclusion === 'action_required')) return 'failure'
+    if (check_runs.some(r => r.status === 'in_progress' || r.status === 'queued')) return 'pending'
+    if (check_runs.every(r => r.conclusion === 'success' || r.conclusion === 'skipped' || r.conclusion === 'neutral')) return 'success'
+    return 'neutral'
+  } catch {
+    return null
+  }
+}
+
 async function searchPRs(token: string, query: string): Promise<GitHubPR[]> {
   const url = `${BASE}/search/issues?q=${encodeURIComponent(`is:pr is:open ${query}`)}&per_page=100&sort=updated`
-  const data = await fetchWithToken<{ items: GitHubPR[] }>(url, token)
-  return data.items
+  const data = await fetchWithToken<{ items: Omit<GitHubPR, 'ci_status'>[] }>(url, token)
+  return Promise.all(
+    data.items.map(async (pr) => ({
+      ...pr,
+      ci_status: await fetchCIStatus(token, pr.repository_url, pr.number),
+    })),
+  )
 }
 
 export async function fetchAssignedPRs(token: string): Promise<GitHubPR[]> {
