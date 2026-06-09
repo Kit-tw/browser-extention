@@ -4,7 +4,8 @@ import { testJiraConnection } from '../../services/jira.service'
 import { testGitLabConnection } from '../../services/gitlab.service'
 import { testGitHubConnection } from '../../services/github.service'
 import { BackgroundSettings } from './BackgroundSettings'
-import type { JiraAccount, GitLabAccount, GitHubAccount, WidgetId } from '../../types/settings.types'
+import type { JiraAccount, GitLabAccount, GitHubAccount, WidgetId, Reminder, NotificationSchedule } from '../../types/settings.types'
+import type { BillingCycle, DueDateModel } from '../../types/reminder.types'
 
 // ── Shared form primitives ──────────────────────────────────────────────────
 
@@ -514,6 +515,7 @@ function DashboardTab() {
     gitlab: 'GitLab',
     todo: 'Todos',
     note: 'Notes',
+    reminders: 'Reminders',
   }
 
   return (
@@ -580,9 +582,327 @@ function DashboardTab() {
   )
 }
 
+// ── Reminder helpers ───────────────────────────────────────────────────────
+
+function toInputDate(ddmmyyyy: string): string {
+  const [d, m, y] = ddmmyyyy.split('-')
+  return `${y}-${m}-${d}`
+}
+
+function fromInputDate(yyyymmdd: string): string {
+  const [y, m, d] = yyyymmdd.split('-')
+  return `${d}-${m}-${y}`
+}
+
+function generateId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+interface ReminderFormState {
+  name: string
+  type: 'subscription' | 'payment'
+  amount: string
+  billingCycleUnit: 'monthly' | 'yearly' | 'weekly' | 'every-n-days'
+  billingCycleN: number
+  dueDateModelKind: 'fixed-day' | 'billing-offset'
+  billingStartDay: number
+  offsetDays: number
+  nextDueDateInput: string
+}
+
+const EMPTY_REMINDER_FORM: ReminderFormState = {
+  name: '',
+  type: 'subscription',
+  amount: '',
+  billingCycleUnit: 'monthly',
+  billingCycleN: 30,
+  dueDateModelKind: 'fixed-day',
+  billingStartDay: 1,
+  offsetDays: 45,
+  nextDueDateInput: '',
+}
+
+function reminderToForm(r: Reminder): ReminderFormState {
+  return {
+    name: r.name,
+    type: r.type,
+    amount: r.amount ?? '',
+    billingCycleUnit: r.billingCycle.unit,
+    billingCycleN: r.billingCycle.unit === 'every-n-days' ? r.billingCycle.n : 30,
+    dueDateModelKind: r.dueDateModel.kind,
+    billingStartDay: r.dueDateModel.kind === 'billing-offset' ? r.dueDateModel.billingStartDay : 1,
+    offsetDays: r.dueDateModel.kind === 'billing-offset' ? r.dueDateModel.offsetDays : 45,
+    nextDueDateInput: toInputDate(r.nextDueDate),
+  }
+}
+
+function formToReminder(form: ReminderFormState, id: string): Reminder {
+  const billingCycle: BillingCycle = form.billingCycleUnit === 'every-n-days'
+    ? { unit: 'every-n-days', n: form.billingCycleN }
+    : { unit: form.billingCycleUnit }
+
+  const nextDueDate = fromInputDate(form.nextDueDateInput)
+  const dayOfCycle = parseInt(nextDueDate.split('-')[0])
+
+  const dueDateModel: DueDateModel = form.dueDateModelKind === 'fixed-day'
+    ? { kind: 'fixed-day', dayOfCycle }
+    : { kind: 'billing-offset', billingStartDay: form.billingStartDay, offsetDays: form.offsetDays }
+
+  return {
+    id,
+    name: form.name.trim(),
+    type: form.type,
+    amount: form.amount.trim() || undefined,
+    billingCycle,
+    dueDateModel,
+    nextDueDate,
+  }
+}
+
+// ── Reminder form ──────────────────────────────────────────────────────────
+
+function ReminderForm({
+  initial, onSave, onCancel,
+}: {
+  initial?: ReminderFormState
+  onSave: (f: ReminderFormState) => void
+  onCancel: () => void
+}) {
+  const [form, setForm] = useState<ReminderFormState>(initial ?? EMPTY_REMINDER_FORM)
+  const f = (patch: Partial<ReminderFormState>) => setForm((s) => ({ ...s, ...patch }))
+  const valid = form.name.trim() && form.nextDueDateInput
+
+  return (
+    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3 mt-2">
+      <div>
+        <Label htmlFor="rem-name">Name</Label>
+        <TextInput id="rem-name" value={form.name} onChange={(v) => f({ name: v })} placeholder="Netflix, Credit Card…" />
+      </div>
+
+      <div>
+        <Label>Type</Label>
+        <div className="flex gap-4">
+          {(['subscription', 'payment'] as const).map((t) => (
+            <label key={t} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="radio" name="rem-type" value={t} checked={form.type === t}
+                onChange={() => f({ type: t })} className="accent-blue-600" />
+              <span className="text-sm text-gray-700 dark:text-gray-300 capitalize">{t}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <Label htmlFor="rem-amount">Amount (optional)</Label>
+        <TextInput id="rem-amount" value={form.amount} onChange={(v) => f({ amount: v })} placeholder="e.g. ฿15,000 or $20/mo" />
+      </div>
+
+      <div>
+        <Label htmlFor="rem-cycle">Billing Cycle</Label>
+        <select
+          id="rem-cycle"
+          value={form.billingCycleUnit}
+          onChange={(e) => f({ billingCycleUnit: e.target.value as ReminderFormState['billingCycleUnit'] })}
+          className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="monthly">Monthly</option>
+          <option value="yearly">Yearly</option>
+          <option value="weekly">Weekly</option>
+          <option value="every-n-days">Every N days</option>
+        </select>
+        {form.billingCycleUnit === 'every-n-days' && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Every</span>
+            <input
+              type="number" min={1} max={365}
+              value={form.billingCycleN}
+              onChange={(e) => f({ billingCycleN: parseInt(e.target.value) || 30 })}
+              className="w-20 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-600 dark:text-gray-400">days</span>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Label>Due Date Model</Label>
+        <div className="flex gap-4 mb-2">
+          {(['fixed-day', 'billing-offset'] as const).map((k) => (
+            <label key={k} className="flex items-center gap-1.5 cursor-pointer">
+              <input type="radio" name="rem-model" value={k} checked={form.dueDateModelKind === k}
+                onChange={() => f({ dueDateModelKind: k })} className="accent-blue-600" />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                {k === 'fixed-day' ? 'Fixed day' : 'Billing offset'}
+              </span>
+            </label>
+          ))}
+        </div>
+        {form.dueDateModelKind === 'billing-offset' && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-600 dark:text-gray-400">Billing starts on day</span>
+            <input type="number" min={1} max={31} value={form.billingStartDay}
+              onChange={(e) => f({ billingStartDay: parseInt(e.target.value) || 1 })}
+              className="w-16 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-600 dark:text-gray-400">due after</span>
+            <input type="number" min={1} max={365} value={form.offsetDays}
+              onChange={(e) => f({ offsetDays: parseInt(e.target.value) || 45 })}
+              className="w-20 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-600 dark:text-gray-400">days</span>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Label htmlFor="rem-due">Next Due Date</Label>
+        <input
+          id="rem-due"
+          type="date"
+          value={form.nextDueDateInput}
+          onChange={(e) => f({ nextDueDateInput: e.target.value })}
+          className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      </div>
+
+      <div className="flex gap-2 pt-1">
+        <button onClick={() => onSave(form)} disabled={!valid}
+          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+          Save
+        </button>
+        <button onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-500 dark:text-gray-400 hover:underline">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── Reminders tab ──────────────────────────────────────────────────────────
+
+function RemindersTab() {
+  const { reminders, addReminder, updateReminder, removeReminder, dashboard, updateNotificationSchedule } = useSettings()
+  const [adding, setAdding] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const schedule = dashboard.notificationSchedule
+  const [newTime, setNewTime] = useState('09:00')
+
+  const handleAdd = (form: ReminderFormState) => {
+    addReminder(formToReminder(form, generateId()))
+    setAdding(false)
+    try { chrome.runtime.sendMessage({ type: 'UPDATE_REMINDER_SCHEDULE', schedule }) } catch { /* ignore */ }
+  }
+
+  const handleEdit = (id: string, form: ReminderFormState) => {
+    updateReminder(id, formToReminder(form, id))
+    setEditingId(null)
+  }
+
+  const addTime = () => {
+    if (!newTime || schedule.times.includes(newTime)) return
+    const times = [...schedule.times, newTime].sort()
+    updateNotificationSchedule({ ...schedule, times })
+    try { chrome.runtime.sendMessage({ type: 'UPDATE_REMINDER_SCHEDULE', schedule: { ...schedule, times } }) } catch { /* ignore */ }
+  }
+
+  const removeTime = (t: string) => {
+    const times = schedule.times.filter((x) => x !== t)
+    updateNotificationSchedule({ ...schedule, times })
+    try { chrome.runtime.sendMessage({ type: 'UPDATE_REMINDER_SCHEDULE', schedule: { ...schedule, times } }) } catch { /* ignore */ }
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Reminder list */}
+      <div className="space-y-2">
+        {reminders.map((r) => (
+          <div key={r.id}>
+            {editingId === r.id ? (
+              <ReminderForm
+                initial={reminderToForm(r)}
+                onSave={(f) => handleEdit(r.id, f)}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{r.name}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    {r.type} · {r.billingCycle.unit === 'every-n-days' ? `every ${r.billingCycle.n}d` : r.billingCycle.unit}
+                    {r.amount ? ` · ${r.amount}` : ''}
+                  </p>
+                </div>
+                <button onClick={() => setEditingId(r.id)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline shrink-0">Edit</button>
+                <button onClick={() => removeReminder(r.id)}
+                  className="text-xs text-red-500 dark:text-red-400 hover:underline shrink-0">Delete</button>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {reminders.length === 0 && !adding && (
+          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No reminders yet.</p>
+        )}
+
+        {adding ? (
+          <ReminderForm onSave={handleAdd} onCancel={() => setAdding(false)} />
+        ) : (
+          <button onClick={() => setAdding(true)}
+            className="w-full py-2 text-sm text-blue-600 dark:text-blue-400 border border-dashed border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+            + Add Reminder
+          </button>
+        )}
+      </div>
+
+      {/* Notification schedule */}
+      <div className="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Notification Schedule</h3>
+
+        <div>
+          <Label>Warn within</Label>
+          <div className="flex items-center gap-2">
+            <input type="number" min={1} max={90}
+              value={schedule.warnWithinDays}
+              onChange={(e) => updateNotificationSchedule({ ...schedule, warnWithinDays: parseInt(e.target.value) || 7 })}
+              className="w-20 text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-600 dark:text-gray-400">days</span>
+          </div>
+        </div>
+
+        <div>
+          <Label>Daily notification times</Label>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {schedule.times.map((t) => (
+              <span key={t} className="flex items-center gap-1 text-sm bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                {t}
+                <button onClick={() => removeTime(t)}
+                  className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors"
+                  aria-label={`Remove ${t}`}>
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input type="time" value={newTime} onChange={(e) => setNewTime(e.target.value)}
+              className="text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button onClick={addTime}
+              className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              Add Time
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main SettingsPanel ─────────────────────────────────────────────────────
 
-type Tab = 'jira' | 'gitlab' | 'github' | 'dashboard' | 'background'
+type Tab = 'jira' | 'gitlab' | 'github' | 'dashboard' | 'reminders' | 'background'
 
 interface SettingsPanelProps {
   open: boolean
@@ -609,6 +929,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
     { id: 'gitlab', label: 'GitLab' },
     { id: 'github', label: 'GitHub' },
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'reminders', label: 'Reminders' },
     { id: 'background', label: 'Background' },
   ]
 
@@ -660,6 +981,7 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
           {activeTab === 'gitlab' && <GitLabTab />}
           {activeTab === 'github' && <GitHubTab />}
           {activeTab === 'dashboard' && <DashboardTab />}
+          {activeTab === 'reminders' && <RemindersTab />}
           {activeTab === 'background' && <BackgroundSettings />}
         </div>
       </div>

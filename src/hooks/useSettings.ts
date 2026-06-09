@@ -10,9 +10,11 @@ import type {
   WidgetPosition,
   BackgroundSettings,
   BgEntry,
+  NotificationSchedule,
+  Reminder,
 } from '../types/settings.types'
 
-export type { JiraAccount, GitLabAccount, GitHubAccount, DashboardSettings, StoredSettings, WidgetId, WidgetPosition, BackgroundSettings, BgEntry }
+export type { JiraAccount, GitLabAccount, GitHubAccount, DashboardSettings, StoredSettings, WidgetId, WidgetPosition, BackgroundSettings, BgEntry, NotificationSchedule, Reminder }
 
 export function useSettings() {
   const store = useSettingsStore()
@@ -27,6 +29,7 @@ export function useSettings() {
     jiraAccounts: store.jiraAccounts,
     gitlabAccounts: store.gitlabAccounts,
     githubAccounts: store.githubAccounts,
+    reminders: store.reminders,
     dashboard: store.dashboard,
     initialized: store.initialized,
     addJiraAccount: store.addJiraAccount,
@@ -44,6 +47,11 @@ export function useSettings() {
     updateBackground: store.updateBackground,
     addBgEntry: store.addBgEntry,
     removeBgEntry: store.removeBgEntry,
+    addReminder: store.addReminder,
+    updateReminder: store.updateReminder,
+    removeReminder: store.removeReminder,
+    markReminderPaid: store.markReminderPaid,
+    updateNotificationSchedule: store.updateNotificationSchedule,
   }
 }
 

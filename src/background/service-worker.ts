@@ -2,7 +2,8 @@
 import { fetchJiraIssues } from '../services/jira.service'
 import { fetchAssignedMRs, fetchAuthoredMRs, fetchReviewerMRs } from '../services/gitlab.service'
 import { fetchAssignedPRs, fetchAuthoredPRs, fetchReviewRequestedPRs } from '../services/github.service'
-import type { StoredSettings, JiraAccount, GitLabAccount, GitHubAccount } from '../types/settings.types'
+import type { StoredSettings, JiraAccount, GitLabAccount, GitHubAccount, NotificationSchedule } from '../types/settings.types'
+import { getDueReminders, daysUntilDue, dateToDisplay } from '../utils/reminders'
 
 const SYNC_ALARM = 'sync-data'
 const DEFAULT_INTERVAL_MINUTES = 5
@@ -40,6 +41,56 @@ async function initDefaultSettings(): Promise<void> {
     }
   } catch {
     // Silently fail
+  }
+}
+
+async function setupReminderAlarms(schedule: NotificationSchedule): Promise<void> {
+  try {
+    const all = await chrome.alarms.getAll()
+    for (const alarm of all) {
+      if (alarm.name.startsWith('reminder-check-')) await chrome.alarms.clear(alarm.name)
+    }
+    for (let i = 0; i < schedule.times.length; i++) {
+      const [h, m] = schedule.times[i].split(':').map(Number)
+      const fire = new Date()
+      fire.setHours(h, m, 0, 0)
+      if (fire.getTime() <= Date.now()) fire.setDate(fire.getDate() + 1)
+      await chrome.alarms.create(`reminder-check-${i}`, {
+        when: fire.getTime(),
+        periodInMinutes: 24 * 60,
+      })
+    }
+  } catch {
+    // silently fail
+  }
+}
+
+async function checkAndFireReminders(): Promise<void> {
+  try {
+    const settings = await getSettings()
+    if (!settings) return
+    const reminders = settings.reminders ?? []
+    if (reminders.length === 0) return
+    const schedule = settings.dashboard.notificationSchedule
+    const today = dateToDisplay(new Date())
+    const due = getDueReminders(reminders, today, schedule.warnWithinDays)
+    for (const r of due) {
+      const days = daysUntilDue(r, today)
+      const body = days < 0
+        ? `Overdue by ${Math.abs(days)} day(s)${r.amount ? ` · ${r.amount}` : ''}`
+        : days === 0
+        ? `Due today${r.amount ? ` · ${r.amount}` : ''}`
+        : `Due in ${days} day(s)${r.amount ? ` · ${r.amount}` : ''}`
+      await chrome.notifications.create(`reminder-${r.id}`, {
+        type: 'basic',
+        iconUrl: 'icons/icon.png',
+        title: `Reminder: ${r.name}`,
+        message: body,
+        priority: days < 0 ? 2 : 1,
+      })
+    }
+  } catch {
+    // silently fail
   }
 }
 
@@ -163,12 +214,17 @@ chrome.runtime.onInstalled.addListener(async () => {
   const settings = await getSettings()
   const interval = settings?.dashboard?.refreshIntervalMinutes ?? DEFAULT_INTERVAL_MINUTES
   await createAlarms(interval)
+  const schedule = settings?.dashboard?.notificationSchedule ?? { times: ['09:00'], warnWithinDays: 7 }
+  await setupReminderAlarms(schedule)
 })
 
 // Alarm handler
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === SYNC_ALARM) {
     await runSync()
+  }
+  if (alarm.name.startsWith('reminder-check-')) {
+    await checkAndFireReminders()
   }
 })
 
@@ -193,7 +249,7 @@ chrome.action.onClicked.addListener(async () => {
 // Message handler
 chrome.runtime.onMessage.addListener(
   (
-    message: { type: string; minutes?: number },
+    message: { type: string; minutes?: number; schedule?: unknown },
     _sender,
     sendResponse: (response: { ok: boolean }) => void,
   ) => {
@@ -209,6 +265,12 @@ chrome.runtime.onMessage.addListener(
       return true
     }
 
+    if (message.type === 'UPDATE_REMINDER_SCHEDULE' && message.schedule) {
+      setupReminderAlarms(message.schedule as NotificationSchedule)
+        .then(() => sendResponse({ ok: true }))
+        .catch(() => sendResponse({ ok: false }))
+      return true
+    }
 
     return false
   },

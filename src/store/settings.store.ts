@@ -9,7 +9,10 @@ import type {
   WidgetPosition,
   BackgroundSettings,
   BgEntry,
+  NotificationSchedule,
+  Reminder,
 } from '../types/settings.types'
+import { advanceDueDate } from '../utils/reminders'
 
 export type {
   JiraAccount,
@@ -24,10 +27,16 @@ export type {
 }
 
 const DEFAULT_POSITIONS: Record<WidgetId, WidgetPosition> = {
-  jira:   { x: 20,  y: 80,  w: 420, h: 0 },
-  gitlab: { x: 460, y: 80,  w: 420, h: 0 },
-  todo:   { x: 900, y: 80,  w: 380, h: 0 },
-  note:   { x: 20,  y: 20,  w: 420, h: 0 },
+  jira:      { x: 20,  y: 80,  w: 420, h: 0 },
+  gitlab:    { x: 460, y: 80,  w: 420, h: 0 },
+  todo:      { x: 900, y: 80,  w: 380, h: 0 },
+  note:      { x: 20,  y: 20,  w: 420, h: 0 },
+  reminders: { x: 900, y: 420, w: 380, h: 0 },
+}
+
+const DEFAULT_NOTIFICATION_SCHEDULE: NotificationSchedule = {
+  times: ['09:00'],
+  warnWithinDays: 7,
 }
 
 const DEFAULT_BACKGROUND: BackgroundSettings = {
@@ -43,16 +52,18 @@ const DEFAULT_BACKGROUND: BackgroundSettings = {
 const DEFAULT_DASHBOARD: DashboardSettings = {
   refreshIntervalMinutes: 5,
   theme: 'system',
-  widgets:   { jira: true, gitlab: true, todo: true, note: true },
-  collapsed: { jira: false, gitlab: false, todo: false, note: false },
+  widgets:   { jira: true, gitlab: true, todo: true, note: true, reminders: true },
+  collapsed: { jira: false, gitlab: false, todo: false, note: false, reminders: false },
   positions: { ...DEFAULT_POSITIONS },
   background: { ...DEFAULT_BACKGROUND },
+  notificationSchedule: { ...DEFAULT_NOTIFICATION_SCHEDULE },
 }
 
 const DEFAULT_SETTINGS: StoredSettings = {
   jiraAccounts: [],
   gitlabAccounts: [],
   githubAccounts: [],
+  reminders: [],
   dashboard: DEFAULT_DASHBOARD,
 }
 
@@ -76,6 +87,11 @@ interface SettingsState extends StoredSettings {
   updateBackground: (partial: Partial<BackgroundSettings>) => Promise<void>
   addBgEntry: (entry: BgEntry) => Promise<void>
   removeBgEntry: (id: string) => Promise<void>
+  addReminder: (reminder: Reminder) => Promise<void>
+  updateReminder: (id: string, partial: Partial<Reminder>) => Promise<void>
+  removeReminder: (id: string) => Promise<void>
+  markReminderPaid: (id: string) => Promise<void>
+  updateNotificationSchedule: (schedule: NotificationSchedule) => Promise<void>
 }
 
 async function readFromStorage(): Promise<StoredSettings> {
@@ -91,6 +107,7 @@ async function readFromStorage(): Promise<StoredSettings> {
         jiraAccounts: Array.isArray(stored.jiraAccounts) ? stored.jiraAccounts : [],
         gitlabAccounts: Array.isArray(stored.gitlabAccounts) ? stored.gitlabAccounts : [],
         githubAccounts: Array.isArray(stored.githubAccounts) ? stored.githubAccounts : [],
+        reminders: Array.isArray(stored.reminders) ? stored.reminders : [],
         dashboard: {
           ...DEFAULT_DASHBOARD,
           ...stored.dashboard,
@@ -98,6 +115,7 @@ async function readFromStorage(): Promise<StoredSettings> {
           collapsed: { ...DEFAULT_DASHBOARD.collapsed, ...stored.dashboard?.collapsed },
           positions: mergedPositions,
           background: { ...DEFAULT_BACKGROUND, ...stored.dashboard?.background },
+          notificationSchedule: { ...DEFAULT_NOTIFICATION_SCHEDULE, ...stored.dashboard?.notificationSchedule },
         },
       }
     }
@@ -126,12 +144,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       jiraAccounts: s.jiraAccounts,
       gitlabAccounts: s.gitlabAccounts,
       githubAccounts: s.githubAccounts,
+      reminders: s.reminders,
       dashboard: s.dashboard,
     })
   }
 
   return {
     ...DEFAULT_SETTINGS,
+    reminders: [],
     dashboard: { ...DEFAULT_DASHBOARD, positions: { ...DEFAULT_POSITIONS } },
     initialized: false,
 
@@ -231,6 +251,33 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
         const todayId = bg.todayId === id ? (entries[0]?.id ?? '') : bg.todayId
         return { dashboard: { ...s.dashboard, background: { ...bg, entries, todayId } } }
       })
+      await persist()
+    },
+
+    // ── Reminders ─────────────────────────────────────────────────────────────
+    addReminder: async (reminder) => {
+      set((s) => ({ reminders: [...s.reminders, reminder] }))
+      await persist()
+    },
+    updateReminder: async (id, partial) => {
+      set((s) => ({ reminders: s.reminders.map((r) => (r.id === id ? { ...r, ...partial } : r)) }))
+      await persist()
+    },
+    removeReminder: async (id) => {
+      set((s) => ({ reminders: s.reminders.filter((r) => r.id !== id) }))
+      await persist()
+    },
+    markReminderPaid: async (id) => {
+      set((s) => ({
+        reminders: s.reminders.map((r) => {
+          if (r.id !== id) return r
+          return { ...r, nextDueDate: advanceDueDate(r) }
+        }),
+      }))
+      await persist()
+    },
+    updateNotificationSchedule: async (schedule) => {
+      set((s) => ({ dashboard: { ...s.dashboard, notificationSchedule: schedule } }))
       await persist()
     },
   }

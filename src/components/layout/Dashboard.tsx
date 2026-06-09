@@ -15,6 +15,7 @@ import { GitLabWidget } from '../widgets/GitLabWidget'
 import { GitHubWidget } from '../widgets/GitHubWidget'
 import { TodoWidget } from '../widgets/TodoWidget'
 import { NoteWidget } from '../widgets/NoteWidget'
+import { RemindersWidget } from '../widgets/RemindersWidget'
 import { WidgetCard } from './WidgetCard'
 import { Badge } from '../shared/Badge'
 import type { JiraAccount, GitLabAccount, GitHubAccount, DashboardSettings, WidgetPosition } from '../../types/settings.types'
@@ -152,6 +153,14 @@ function NoteIcon() {
   return (
     <svg className="w-4 h-4 text-[#A78BFA]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+  )
+}
+
+function BellIcon() {
+  return (
+    <svg className="w-4 h-4 text-[#F59E0B]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
     </svg>
   )
 }
@@ -343,6 +352,37 @@ function NoteWidgetItem({ dashboard }: { dashboard: DashboardSettings }) {
   )
 }
 
+function RemindersWidgetItem({ dashboard }: { dashboard: DashboardSettings }) {
+  const { setCollapsed, setWidgetPosition } = useSettings()
+  const pos = dashboard.positions.reminders
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: 'reminders' })
+  const { renderW, handleDelta, handleRelease } = useWidgetResize(
+    pos.w,
+    useCallback((w) => setWidgetPosition('reminders', { ...pos, w }), [pos, setWidgetPosition]),
+  )
+
+  const collapsed = dashboard.collapsed.reminders
+  const style: React.CSSProperties = {
+    position: 'absolute', left: pos.x, top: pos.y,
+    width: collapsed ? 'max-content' : (renderW || undefined),
+    transform: CSS.Translate.toString(transform), zIndex: isDragging ? 100 : 1, opacity: isDragging ? 0.85 : 1,
+  }
+
+  return (
+    <div ref={setNodeRef} style={{ ...style, animationDelay: '200ms' }} className="widget-enter" data-widget="reminders">
+      {!collapsed && <ResizeHandle onDelta={handleDelta} onRelease={handleRelease} />}
+      <WidgetCard
+        title="Reminders" icon={<BellIcon />}
+        collapsed={collapsed} onToggleCollapse={() => setCollapsed('reminders', !collapsed)}
+        lastSync={null} dragHandleProps={{ ...attributes, ...listeners }} accent="amber"
+      >
+        <RemindersWidget />
+      </WidgetCard>
+    </div>
+  )
+}
+
 function TodoWidgetItem({ dashboard }: { dashboard: DashboardSettings }) {
   const { setCollapsed, setWidgetPosition } = useSettings()
   const pos = dashboard.positions.todo
@@ -386,7 +426,7 @@ export function Dashboard() {
     const id = active.id as string
     let current: WidgetPosition | undefined
 
-    if (id === 'todo' || id === 'note') {
+    if (id === 'todo' || id === 'note' || id === 'reminders') {
       current = (dashboard.positions as Record<string, WidgetPosition>)[id]
     } else if (id.startsWith('jira_')) {
       const idx = jiraAccounts.findIndex((a) => `jira_${a.id}` === id)
@@ -422,7 +462,7 @@ export function Dashboard() {
       y: Math.max(0, current.y + yDelta),
     }
 
-    if (id === 'todo' || id === 'note') {
+    if (id === 'todo' || id === 'note' || id === 'reminders') {
       setWidgetPosition(id, updated)
     } else {
       setExtendedPosition(id, updated)
@@ -449,6 +489,7 @@ export function Dashboard() {
         ))}
 
         {dashboard.widgets.todo && <TodoWidgetItem dashboard={dashboard} />}
+        {dashboard.widgets.reminders && <RemindersWidgetItem dashboard={dashboard} />}
       </main>
     </DndContext>
   )

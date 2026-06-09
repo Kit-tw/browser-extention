@@ -3,7 +3,7 @@
   "name": "Dev Dashboard",
   "version": "1.0.0",
   "chrome_url_overrides": { "newtab": "src/newtab/index.html" },
-  "permissions": ["storage", "alarms"],
+  "permissions": ["storage", "alarms", "notifications"],
   "host_permissions": [
     "https://*.atlassian.net/*",
     "https://gitlab.com/*",

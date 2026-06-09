@@ -1,3 +1,6 @@
+import type { Reminder } from './reminder.types'
+export type { Reminder }
+
 export interface JiraAccount {
   id: string
   label: string
@@ -19,7 +22,12 @@ export interface GitHubAccount {
   token: string
 }
 
-export type WidgetId = 'jira' | 'gitlab' | 'todo' | 'note'
+export type WidgetId = 'jira' | 'gitlab' | 'todo' | 'note' | 'reminders'
+
+export interface NotificationSchedule {
+  times: string[]        // "HH:MM" 24-hour format
+  warnWithinDays: number
+}
 
 export interface WidgetPosition {
   x: number
@@ -54,11 +62,13 @@ export interface DashboardSettings {
   collapsed: Record<WidgetId, boolean>
   positions: Record<WidgetId, WidgetPosition>
   background: BackgroundSettings
+  notificationSchedule: NotificationSchedule
 }
 
 export interface StoredSettings {
   jiraAccounts: JiraAccount[]
   gitlabAccounts: GitLabAccount[]
   githubAccounts: GitHubAccount[]
+  reminders: Reminder[]
   dashboard: DashboardSettings
 }
