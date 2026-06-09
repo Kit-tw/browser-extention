@@ -1,6 +1,6 @@
 import React from 'react'
 import { useSettings } from '../../hooks/useSettings'
-import { daysUntilDue, dateToDisplay } from '../../utils/reminders'
+import { daysUntilDue, dateToDisplay, formatDDMMYYYY } from '../../utils/reminders'
 import type { Reminder } from '../../types/reminder.types'
 
 function ReminderRow({ reminder, onMarkPaid }: { reminder: Reminder; onMarkPaid: () => void }) {
@@ -39,6 +39,9 @@ function ReminderRow({ reminder, onMarkPaid }: { reminder: Reminder; onMarkPaid:
             : 'text-gray-400 dark:text-gray-500'
           }`}>
             {daysLabel}
+          </span>
+          <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
+            · {formatDDMMYYYY(reminder.nextDueDate)}
           </span>
           {reminder.amount && (
             <span className="text-xs text-gray-400 dark:text-gray-500">· {reminder.amount}</span>

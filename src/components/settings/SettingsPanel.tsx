@@ -6,6 +6,7 @@ import { testGitHubConnection } from '../../services/github.service'
 import { BackgroundSettings } from './BackgroundSettings'
 import type { JiraAccount, GitLabAccount, GitHubAccount, WidgetId, Reminder, NotificationSchedule } from '../../types/settings.types'
 import type { BillingCycle, DueDateModel } from '../../types/reminder.types'
+import { formatDDMMYYYY } from '../../utils/reminders'
 
 // ── Shared form primitives ──────────────────────────────────────────────────
 
@@ -612,13 +613,15 @@ function DashboardTab() {
 // ── Reminder helpers ───────────────────────────────────────────────────────
 
 function toInputDate(ddmmyyyy: string): string {
-  const [d, m, y] = ddmmyyyy.split('-')
-  return `${y}-${m}-${d}`
+  return ddmmyyyy.replace(/-/g, '/')
 }
 
-function fromInputDate(yyyymmdd: string): string {
-  const [y, m, d] = yyyymmdd.split('-')
-  return `${d}-${m}-${y}`
+function fromInputDate(ddmmyyyy: string): string {
+  return ddmmyyyy.replace(/\//g, '-')
+}
+
+function isValidDDMMYYYY(v: string): boolean {
+  return /^\d{2}\/\d{2}\/\d{4}$/.test(v)
 }
 
 function generateId() {
@@ -697,7 +700,7 @@ function ReminderForm({
 }) {
   const [form, setForm] = useState<ReminderFormState>(initial ?? EMPTY_REMINDER_FORM)
   const f = (patch: Partial<ReminderFormState>) => setForm((s) => ({ ...s, ...patch }))
-  const valid = form.name.trim() && form.nextDueDateInput
+  const valid = form.name.trim() && isValidDDMMYYYY(form.nextDueDateInput)
 
   return (
     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 space-y-3 mt-2">
@@ -783,13 +786,15 @@ function ReminderForm({
 
       <div>
         <Label htmlFor="rem-due">Next Due Date</Label>
-        <input
+        <TextInput
           id="rem-due"
-          type="date"
           value={form.nextDueDateInput}
-          onChange={(e) => f({ nextDueDateInput: e.target.value })}
-          className="w-full text-sm border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-500"
+          onChange={(v) => f({ nextDueDateInput: v })}
+          placeholder="dd/mm/yyyy"
         />
+        {form.nextDueDateInput && !isValidDDMMYYYY(form.nextDueDateInput) && (
+          <p className="text-xs text-red-500 dark:text-red-400 mt-1">Enter date as dd/mm/yyyy</p>
+        )}
       </div>
 
       <div className="flex gap-2 pt-1">
@@ -856,7 +861,7 @@ function RemindersTab() {
                   <p className="text-sm font-medium text-gray-800 dark:text-gray-100">{r.name}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500">
                     {r.type} · {r.billingCycle.unit === 'every-n-days' ? `every ${r.billingCycle.n}d` : r.billingCycle.unit}
-                    {r.amount ? ` · ${r.amount}` : ''}
+                    {r.amount ? ` · ${r.amount}` : ''} · due {formatDDMMYYYY(r.nextDueDate)}
                   </p>
                 </div>
                 <button onClick={() => setEditingId(r.id)}
@@ -986,12 +991,12 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 shrink-0 px-4">
+        <div className="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 shrink-0 px-2">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`shrink-0 px-3 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.id
                   ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
                   : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'

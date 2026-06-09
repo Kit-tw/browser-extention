@@ -48,6 +48,10 @@ export function dateToDisplay(d: Date): string {
   return toDate(d)
 }
 
+export function formatDDMMYYYY(ddmmyyyy: string): string {
+  return ddmmyyyy.replace(/-/g, '/')
+}
+
 export function getDueReminders(
   reminders: Reminder[],
   today: string,
