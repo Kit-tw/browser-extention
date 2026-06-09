@@ -6,6 +6,7 @@ import { Header } from '../components/layout/Header'
 import { Dashboard } from '../components/layout/Dashboard'
 import { SettingsPanel } from '../components/settings/SettingsPanel'
 import { FloatingNotes } from '../components/FloatingNotes'
+import type { ActiveWidget } from '../hooks/useSettings'
 
 function applyTheme(theme: 'light' | 'dark' | 'system') {
   const root = document.documentElement
@@ -86,7 +87,26 @@ export function NewTabApp() {
   const { bg, blobUrl, hasBg } = useBackground()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [activeWidget, setActiveWidget] = useState<ActiveWidget | null>(null)
+  const [panelOpen, setPanelOpen] = useState(true)
   useKeyboardShortcuts(() => setShortcutsOpen((v) => !v), shortcutsOpen)
+
+  // Initialize activeWidget from defaultWidget once settings load
+  useEffect(() => {
+    if (initialized && activeWidget === null) {
+      setActiveWidget(dashboard.defaultWidget ?? 'jira')
+    }
+  }, [initialized])
+
+  const handleSelectWidget = (w: ActiveWidget) => {
+    if (activeWidget === w) {
+      setPanelOpen((v) => !v) // toggle
+    } else {
+      setActiveWidget(w)
+      setPanelOpen(true)
+    }
+  }
 
   // Toggle has-bg on <html> so .widget-card-root CSS rules activate
   useEffect(() => {
@@ -133,7 +153,7 @@ export function NewTabApp() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex flex-col">
+    <div className="h-screen relative overflow-hidden flex flex-col">
       {/* Background layer */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         {hasBg && blobUrl ? (
@@ -161,11 +181,18 @@ export function NewTabApp() {
       </div>
 
       {/* Content */}
-      <Header onOpenSettings={() => setSettingsOpen(true)} onToggleShortcuts={() => setShortcutsOpen((v) => !v)} />
-      <Dashboard />
+      <Header
+        activeWidget={activeWidget}
+        panelOpen={panelOpen}
+        onSelect={handleSelectWidget}
+        onToggleNotes={() => setNotesOpen((v) => !v)}
+        onOpenSettings={() => setSettingsOpen(true)}
+        onToggleShortcuts={() => setShortcutsOpen((v) => !v)}
+      />
+      <Dashboard activeWidget={activeWidget} panelOpen={panelOpen} />
       <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       {shortcutsOpen && <ShortcutsHelp onClose={() => setShortcutsOpen(false)} />}
-      <FloatingNotes />
+      <FloatingNotes open={notesOpen} onClose={() => setNotesOpen(false)} />
     </div>
   )
 }

@@ -184,7 +184,12 @@ function LimitToast() {
   )
 }
 
-export function FloatingNotes() {
+export function FloatingNotes({ open = true, onClose }: { open?: boolean; onClose?: () => void }) {
+  if (!open) return null
+  return <FloatingNotesInner onClose={onClose} />
+}
+
+function FloatingNotesInner({ onClose: _onClose }: { onClose?: () => void }) {
   const { notes, addNote, updateNote, deleteNote } = useNotes()
   const [composing, setComposing] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)

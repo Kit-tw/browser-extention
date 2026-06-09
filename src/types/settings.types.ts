@@ -55,6 +55,8 @@ export interface BackgroundSettings {
   todayId: string
 }
 
+export type ActiveWidget = 'jira' | 'gitlab' | 'github' | 'todo' | 'reminders'
+
 export interface DashboardSettings {
   refreshIntervalMinutes: number
   theme: 'light' | 'dark' | 'system'
@@ -63,6 +65,7 @@ export interface DashboardSettings {
   positions: Record<WidgetId, WidgetPosition>
   background: BackgroundSettings
   notificationSchedule: NotificationSchedule
+  defaultWidget: ActiveWidget
 }
 
 export interface StoredSettings {

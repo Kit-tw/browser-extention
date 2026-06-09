@@ -501,7 +501,7 @@ function GitHubTab() {
 }
 
 function DashboardTab() {
-  const { dashboard, updateDashboard } = useSettings()
+  const { dashboard, updateDashboard, setDefaultWidget } = useSettings()
 
   const handleIntervalChange = (minutes: number) => {
     updateDashboard({ refreshIntervalMinutes: minutes })
@@ -509,6 +509,14 @@ function DashboardTab() {
       chrome.runtime.sendMessage({ type: 'UPDATE_INTERVAL', minutes })
     } catch { /* ignore */ }
   }
+
+  const defaultWidgetOptions: { value: string; label: string }[] = [
+    { value: 'jira', label: 'Jira' },
+    { value: 'gitlab', label: 'GitLab' },
+    { value: 'github', label: 'GitHub' },
+    { value: 'todo', label: 'Todos' },
+    { value: 'reminders', label: 'Reminders' },
+  ]
 
   const widgetLabels: Record<WidgetId, string> = {
     jira: 'Jira',
@@ -520,6 +528,25 @@ function DashboardTab() {
 
   return (
     <div className="space-y-5">
+      <div>
+        <Label>Default Widget</Label>
+        <div className="flex gap-2 flex-wrap">
+          {defaultWidgetOptions.map((opt) => (
+            <label key={opt.value} className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="radio"
+                name="defaultWidget"
+                value={opt.value}
+                checked={(dashboard.defaultWidget ?? 'jira') === opt.value}
+                onChange={() => setDefaultWidget(opt.value as import('../../types/settings.types').ActiveWidget)}
+                className="accent-blue-600"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
       <div>
         <Label>Refresh Interval</Label>
         <div className="flex gap-3 flex-wrap">

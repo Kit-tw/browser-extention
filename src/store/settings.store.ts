@@ -11,6 +11,7 @@ import type {
   BgEntry,
   NotificationSchedule,
   Reminder,
+  ActiveWidget,
 } from '../types/settings.types'
 import { advanceDueDate } from '../utils/reminders'
 
@@ -57,6 +58,7 @@ const DEFAULT_DASHBOARD: DashboardSettings = {
   positions: { ...DEFAULT_POSITIONS },
   background: { ...DEFAULT_BACKGROUND },
   notificationSchedule: { ...DEFAULT_NOTIFICATION_SCHEDULE },
+  defaultWidget: 'jira',
 }
 
 const DEFAULT_SETTINGS: StoredSettings = {
@@ -92,6 +94,7 @@ interface SettingsState extends StoredSettings {
   removeReminder: (id: string) => Promise<void>
   markReminderPaid: (id: string) => Promise<void>
   updateNotificationSchedule: (schedule: NotificationSchedule) => Promise<void>
+  setDefaultWidget: (widget: ActiveWidget) => Promise<void>
 }
 
 async function readFromStorage(): Promise<StoredSettings> {
@@ -116,6 +119,7 @@ async function readFromStorage(): Promise<StoredSettings> {
           positions: mergedPositions,
           background: { ...DEFAULT_BACKGROUND, ...stored.dashboard?.background },
           notificationSchedule: { ...DEFAULT_NOTIFICATION_SCHEDULE, ...stored.dashboard?.notificationSchedule },
+          defaultWidget: stored.dashboard?.defaultWidget ?? 'jira',
         },
       }
     }
@@ -278,6 +282,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
     },
     updateNotificationSchedule: async (schedule) => {
       set((s) => ({ dashboard: { ...s.dashboard, notificationSchedule: schedule } }))
+      await persist()
+    },
+    setDefaultWidget: async (widget) => {
+      set((s) => ({ dashboard: { ...s.dashboard, defaultWidget: widget } }))
       await persist()
     },
   }
