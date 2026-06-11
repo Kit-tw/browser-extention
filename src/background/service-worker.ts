@@ -83,7 +83,7 @@ async function checkAndFireReminders(): Promise<void> {
         : `Due in ${days} day(s)${r.amount ? ` · ${r.amount}` : ''}`
       await chrome.notifications.create(`reminder-${r.id}`, {
         type: 'basic',
-        iconUrl: 'icons/icon.png',
+        iconUrl: chrome.runtime.getURL('icons/icon.png'),
         title: `Reminder: ${r.name}`,
         message: body,
         priority: days < 0 ? 2 : 1,
