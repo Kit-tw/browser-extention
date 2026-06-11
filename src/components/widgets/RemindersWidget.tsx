@@ -3,45 +3,35 @@ import { useSettings } from '../../hooks/useSettings'
 import { daysUntilDue, dateToDisplay, formatDDMMYYYY } from '../../utils/reminders'
 import type { Reminder } from '../../types/reminder.types'
 
-function ReminderRow({ reminder, onMarkPaid }: { reminder: Reminder; onMarkPaid: () => void }) {
+function ReminderRow({ reminder, onMarkPaid, warnWithinDays }: { reminder: Reminder; onMarkPaid: () => void; warnWithinDays: number }) {
   const today = dateToDisplay(new Date())
   const days = daysUntilDue(reminder, today)
   const isOverdue = days < 0
   const isToday = days === 0
-
-  const typeLabel = reminder.type === 'subscription' ? 'sub' : 'pay'
+  const isWarning = !isOverdue && days <= warnWithinDays
 
   let daysLabel: string
-  if (isOverdue) daysLabel = `Overdue · ${Math.abs(days)}d`
+  if (isOverdue) daysLabel = `Overdue · ${Math.abs(days)} d`
   else if (isToday) daysLabel = 'Due today'
-  else daysLabel = `${days}d`
+  else daysLabel = `${days} d`
+
+  let pillClass: string
+  if (isOverdue) pillClass = 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
+  else if (isToday || isWarning) pillClass = 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400'
+  else pillClass = 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
 
   return (
     <div className="flex items-center gap-2 py-2">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{reminder.name}</span>
-          <span className="shrink-0 text-[9px] font-semibold uppercase tracking-wide
-            bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 px-1 py-0.5 rounded">
-            {typeLabel}
-          </span>
-          {isOverdue && (
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide
-              bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-1.5 py-0.5 rounded">
-              Overdue
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className={`text-xs font-mono ${
-            isOverdue ? 'text-red-500 dark:text-red-400'
-            : isToday ? 'text-amber-500 dark:text-amber-400'
-            : 'text-gray-400 dark:text-gray-500'
-          }`}>
+          <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded ${pillClass}`}>
             {daysLabel}
           </span>
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
           <span className="text-xs text-gray-400 dark:text-gray-500 font-mono">
-            · {formatDDMMYYYY(reminder.nextDueDate)}
+            {formatDDMMYYYY(reminder.nextDueDate)}
           </span>
           {reminder.amount && (
             <span className="text-xs text-gray-400 dark:text-gray-500">· {reminder.amount}</span>
@@ -63,7 +53,8 @@ function ReminderRow({ reminder, onMarkPaid }: { reminder: Reminder; onMarkPaid:
 }
 
 export function RemindersWidget() {
-  const { reminders, markReminderPaid } = useSettings()
+  const { reminders, markReminderPaid, dashboard } = useSettings()
+  const warnWithinDays = dashboard.notificationSchedule.warnWithinDays
   const today = dateToDisplay(new Date())
 
   if (!reminders || reminders.length === 0) {
@@ -85,10 +76,10 @@ export function RemindersWidget() {
   return (
     <div className="divide-y divide-gray-100 dark:divide-gray-700/50">
       {overdue.map((r) => (
-        <ReminderRow key={r.id} reminder={r} onMarkPaid={() => markReminderPaid(r.id)} />
+        <ReminderRow key={r.id} reminder={r} onMarkPaid={() => markReminderPaid(r.id)} warnWithinDays={warnWithinDays} />
       ))}
       {upcoming.map((r) => (
-        <ReminderRow key={r.id} reminder={r} onMarkPaid={() => markReminderPaid(r.id)} />
+        <ReminderRow key={r.id} reminder={r} onMarkPaid={() => markReminderPaid(r.id)} warnWithinDays={warnWithinDays} />
       ))}
     </div>
   )
