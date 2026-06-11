@@ -9,7 +9,7 @@ npm run build    # production build → dist/
 npm run dev      # dev server (HMR, but extension APIs won't work outside Chrome)
 ```
 
-After every build, reload the unpacked extension in Chrome: `chrome://extensions` → **Dev Dashboard** → refresh icon. The `dist/` folder is what Chrome loads.
+After every build, reload the unpacked extension in Chrome or Edge: `chrome://extensions` / `edge://extensions` → **Dev Dashboard** → refresh icon. The `dist/` folder is what the browser loads.
 
 There is no test runner configured.
 
@@ -56,7 +56,7 @@ React UI (new tab)
 ```
 
 The SW is triggered by:
-- `chrome.alarms` — `sync-data` (every N min) and `meeting-check` (every 1 min)
+- `chrome.alarms` — `sync-data` (every N min), `meeting-check` (every 1 min), `reminder-check-<i>` (daily, one per configured notification time)
 - `chrome.runtime.onMessage` — `TRIGGER_SYNC`, `UPDATE_INTERVAL`, `GOOGLE_AUTH_SUCCESS`
 
 ### Settings storage
@@ -74,6 +74,12 @@ Widgets are **absolutely positioned** on a `position: relative` container. Each 
 ### Settings panel
 
 The settings UI is a slide-over panel (`src/components/settings/SettingsPanel.tsx`) rendered inside `NewTabApp` — not a separate page. The extension toolbar action click opens/focuses the new tab page (handled in the service worker via `chrome.action.onClicked`).
+
+### Reminders & notifications
+
+Reminders are stored in `settings.reminders[]`. The service worker fires `chrome.notifications` when `checkAndFireReminders()` runs — triggered by `reminder-check-<i>` alarms. Which reminders fire is controlled by `settings.dashboard.notificationSchedule.warnWithinDays`.
+
+**Gotcha:** all asset URLs in the service worker must use `chrome.runtime.getURL('path')` — relative paths (e.g. `'icons/icon.png'`) are invalid in the SW context and cause `chrome.notifications.create` to throw silently (swallowed by the catch block).
 
 ### Secrets
 
