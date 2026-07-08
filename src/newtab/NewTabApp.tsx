@@ -26,10 +26,11 @@ function applyTheme(theme: 'light' | 'dark' | 'system') {
 
 function ShortcutsHelp({ onClose }: { onClose: () => void }) {
   const shortcuts = [
-    { key: 'J', desc: 'Jump to Jira widget' },
-    { key: 'G', desc: 'Jump to GitLab / GitHub (press twice to cycle)' },
-    { key: 'N', desc: 'Jump to Notes — focuses the tab title (rename mode)' },
-    { key: 'T', desc: 'Jump to Todo — focuses the input field' },
+    { key: 'J', desc: 'Open Jira panel' },
+    { key: 'G', desc: 'Open GitLab / GitHub panel (press twice to cycle)' },
+    { key: 'T', desc: 'Open Todo panel — focuses the input field' },
+    { key: 'R', desc: 'Open Reminders panel' },
+    { key: 'N', desc: 'Open / close floating notes' },
     { key: '?', desc: 'Toggle this shortcuts reference' },
     { key: 'Esc', desc: 'Blur active input  ·  close this panel' },
   ]
@@ -90,7 +91,6 @@ export function NewTabApp() {
   const [notesOpen, setNotesOpen] = useState(false)
   const [activeWidget, setActiveWidget] = useState<ActiveWidget | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
-  useKeyboardShortcuts(() => setShortcutsOpen((v) => !v), shortcutsOpen)
 
   // Initialize activeWidget from defaultWidget once settings load
   useEffect(() => {
@@ -107,6 +107,13 @@ export function NewTabApp() {
       setPanelOpen(true)
     }
   }
+
+  useKeyboardShortcuts(
+    () => setShortcutsOpen((v) => !v),
+    shortcutsOpen,
+    handleSelectWidget,
+    () => setNotesOpen((v) => !v),
+  )
 
   // Toggle has-bg on <html> so .widget-card-root CSS rules activate
   useEffect(() => {

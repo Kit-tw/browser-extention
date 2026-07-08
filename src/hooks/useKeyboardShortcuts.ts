@@ -1,45 +1,28 @@
 import { useEffect, useRef } from 'react'
 import { useSettingsStore } from '../store/settings.store'
+import type { ActiveWidget } from '../types/settings.types'
 
-function highlightWidget(widgetKey: string) {
-  const wrappers = document.querySelectorAll(`[data-widget="${widgetKey}"]`)
-  wrappers.forEach((wrapper, i) => {
-    const card = (wrapper.querySelector('.widget-card-root') ?? wrapper) as HTMLElement
-    card.classList.remove('widget-highlight')
-    void card.offsetWidth
-    card.classList.add('widget-highlight')
-    setTimeout(() => card.classList.remove('widget-highlight'), 900)
-    if (i === 0) card.focus({ preventScroll: false })
-  })
-}
-
-function expandWidget(widgetKey: string) {
-  const { dashboard, setCollapsed } = useSettingsStore.getState()
-  const collapsed = (dashboard.collapsed as Record<string, boolean>)[widgetKey]
-  if (collapsed) setCollapsed(widgetKey as never, false)
-}
-
-function focusIn(widgetKey: string, selector: string) {
-  setTimeout(() => {
-    const el = document.querySelector(`[data-widget="${widgetKey}"] ${selector}`) as HTMLElement | null
-    el?.focus()
-  }, 60)
-}
-
-export function useKeyboardShortcuts(onToggleHelp: () => void, isHelpOpen: boolean) {
+export function useKeyboardShortcuts(
+  onToggleHelp: () => void,
+  isHelpOpen: boolean,
+  onSelectWidget: (w: ActiveWidget) => void,
+  onToggleNotes: () => void,
+) {
   const gCycleRef = useRef<{ time: number; last: 'gitlab' | 'github' } | null>(null)
-  // Use refs so the single event-listener closure always sees current values
   const onToggleHelpRef = useRef(onToggleHelp)
   const isHelpOpenRef = useRef(isHelpOpen)
+  const onSelectWidgetRef = useRef(onSelectWidget)
+  const onToggleNotesRef = useRef(onToggleNotes)
   useEffect(() => { onToggleHelpRef.current = onToggleHelp }, [onToggleHelp])
   useEffect(() => { isHelpOpenRef.current = isHelpOpen }, [isHelpOpen])
+  useEffect(() => { onSelectWidgetRef.current = onSelectWidget }, [onSelectWidget])
+  useEffect(() => { onToggleNotesRef.current = onToggleNotes }, [onToggleNotes])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       const inInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable
 
-      // Escape: exit input OR close help modal — always handled
       if (e.key === 'Escape') {
         if (inInput) {
           e.preventDefault()
@@ -51,7 +34,6 @@ export function useKeyboardShortcuts(onToggleHelp: () => void, isHelpOpen: boole
         return
       }
 
-      // All other shortcuts are blocked when help modal is open or typing in an input
       if (isHelpOpenRef.current || inInput) return
       if (e.metaKey || e.ctrlKey || e.altKey) return
 
@@ -62,16 +44,20 @@ export function useKeyboardShortcuts(onToggleHelp: () => void, isHelpOpen: boole
         onToggleHelpRef.current()
       } else if (key === 'j' || key === 'J') {
         e.preventDefault()
-        expandWidget('jira')
-        highlightWidget('jira')
+        onSelectWidgetRef.current('jira')
       } else if (key === 'n' || key === 'N') {
         e.preventDefault()
-        document.dispatchEvent(new CustomEvent('note:compose'))
+        onToggleNotesRef.current()
       } else if (key === 't' || key === 'T') {
         e.preventDefault()
-        expandWidget('todo')
-        highlightWidget('todo')
-        focusIn('todo', 'input[type="text"]')
+        onSelectWidgetRef.current('todo')
+        setTimeout(() => {
+          const input = document.querySelector('input[type="text"]') as HTMLElement | null
+          input?.focus()
+        }, 60)
+      } else if (key === 'r' || key === 'R') {
+        e.preventDefault()
+        onSelectWidgetRef.current('reminders')
       } else if (key === 'g' || key === 'G') {
         e.preventDefault()
         const { gitlabAccounts, githubAccounts } = useSettingsStore.getState()
@@ -79,23 +65,18 @@ export function useKeyboardShortcuts(onToggleHelp: () => void, isHelpOpen: boole
         const hasGitHub = githubAccounts.length > 0
         if (!hasGitLab && !hasGitHub) return
 
-        const activate = (target: 'gitlab' | 'github') => {
-          expandWidget(target)
-          highlightWidget(target)
-        }
-
         if (hasGitLab && !hasGitHub) {
-          activate('gitlab')
+          onSelectWidgetRef.current('gitlab')
         } else if (!hasGitLab && hasGitHub) {
-          activate('github')
+          onSelectWidgetRef.current('github')
         } else {
           const now = Date.now()
           const prev = gCycleRef.current
           if (prev && now - prev.time < 1000 && prev.last === 'gitlab') {
-            activate('github')
+            onSelectWidgetRef.current('github')
             gCycleRef.current = { time: now, last: 'github' }
           } else {
-            activate('gitlab')
+            onSelectWidgetRef.current('gitlab')
             gCycleRef.current = { time: now, last: 'gitlab' }
           }
         }
@@ -104,5 +85,5 @@ export function useKeyboardShortcuts(onToggleHelp: () => void, isHelpOpen: boole
 
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, []) // stable: all dependencies accessed via refs
+  }, [])
 }
