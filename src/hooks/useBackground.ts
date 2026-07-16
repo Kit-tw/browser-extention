@@ -16,6 +16,7 @@ const DEFAULT_BG: BackgroundSettings = {
 export function useBackground() {
   const bg = useSettingsStore((s) => s.dashboard.background) ?? DEFAULT_BG
   const [blobUrl, setBlobUrl] = useState<string | null>(null)
+  const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
 
   const { enabled, todayId, entries } = bg
 
@@ -31,11 +32,15 @@ export function useBackground() {
     }
 
     if (entry.type === 'url') {
+      setMediaType('image')
       setBlobUrl(entry.url ?? null)
       return
     }
 
-    // Local: load Blob from IndexedDB and create an object URL
+    const isVideo = entry.type === 'video'
+    setMediaType(isVideo ? 'video' : 'image')
+
+    // Local/video: load Blob from IndexedDB and create an object URL
     let objectUrl: string | null = null
     let cancelled = false
 
@@ -59,5 +64,5 @@ export function useBackground() {
     }
   }, [enabled, todayId]) // entries intentionally omitted: todayId is the stable key
 
-  return { bg, blobUrl, hasBg: enabled && !!blobUrl }
+  return { bg, blobUrl, mediaType, hasBg: enabled && !!blobUrl }
 }

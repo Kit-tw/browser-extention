@@ -3,6 +3,8 @@ import { useSettings } from '../../hooks/useSettings'
 import { saveBlob, deleteBlob, resizeImageToBlob } from '../../services/backgroundDb'
 import type { BgEntry, BgFit } from '../../types/settings.types'
 
+const VIDEO_SIZE_WARN_MB = 100
+
 function generateId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
@@ -30,6 +32,7 @@ export function BackgroundSettings() {
   const { dashboard, updateBackground, addBgEntry, removeBgEntry } = useSettings()
   const bg = dashboard.background
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
   const [urlInput, setUrlInput] = useState('')
   const [showUrlInput, setShowUrlInput] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -55,6 +58,29 @@ export function BackgroundSettings() {
     }
   }
 
+  const handleVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files?.length) return
+    setUploading(true)
+    setError(null)
+    try {
+      for (const file of Array.from(files)) {
+        const sizeMb = file.size / 1024 / 1024
+        if (sizeMb > VIDEO_SIZE_WARN_MB) {
+          setError(`"${file.name}" is ${Math.round(sizeMb)} MB — large videos may slow down your browser.`)
+        }
+        const id = generateId()
+        await saveBlob(id, file)
+        await addBgEntry({ id, type: 'video', name: file.name })
+      }
+    } catch {
+      setError('Failed to upload video.')
+    } finally {
+      setUploading(false)
+      if (videoInputRef.current) videoInputRef.current.value = ''
+    }
+  }
+
   const handleAddUrl = async () => {
     const url = urlInput.trim()
     if (!url.startsWith('https://')) {
@@ -69,7 +95,7 @@ export function BackgroundSettings() {
   }
 
   const handleRemove = async (entry: BgEntry) => {
-    if (entry.type === 'local') await deleteBlob(entry.id)
+    if (entry.type === 'local' || entry.type === 'video') await deleteBlob(entry.id)
     await removeBgEntry(entry.id)
   }
 
@@ -80,17 +106,17 @@ export function BackgroundSettings() {
         <div>
           <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Enable Background</p>
           <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-            Rotates daily when multiple images are added
+            Click any entry to set it now — rotates daily otherwise
           </p>
         </div>
         <Toggle checked={bg.enabled} onChange={() => updateBackground({ enabled: !bg.enabled })} />
       </div>
 
-      {/* Image collection */}
+      {/* Media collection */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Images{bg.entries.length > 0 ? ` (${bg.entries.length})` : ''}
+            Backgrounds{bg.entries.length > 0 ? ` (${bg.entries.length})` : ''}
           </span>
           <div className="flex gap-2">
             <button
@@ -98,7 +124,14 @@ export function BackgroundSettings() {
               disabled={uploading}
               className="text-xs px-2.5 py-1 text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-40 transition-colors"
             >
-              {uploading ? 'Uploading…' : '+ Local'}
+              {uploading ? 'Uploading…' : '+ Image'}
+            </button>
+            <button
+              onClick={() => videoInputRef.current?.click()}
+              disabled={uploading}
+              className="text-xs px-2.5 py-1 text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-40 transition-colors"
+            >
+              + Video
             </button>
             <button
               onClick={() => { setShowUrlInput((v) => !v); setError(null) }}
@@ -114,6 +147,14 @@ export function BackgroundSettings() {
             multiple
             className="hidden"
             onChange={handleFileChange}
+          />
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            multiple
+            className="hidden"
+            onChange={handleVideoChange}
           />
         </div>
 
@@ -142,35 +183,50 @@ export function BackgroundSettings() {
 
         {bg.entries.length === 0 ? (
           <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">
-            No images added yet.
+            No backgrounds added yet.
           </p>
         ) : (
           <div className="space-y-1.5">
-            {bg.entries.map((entry) => (
+            {bg.entries.map((entry) => {
+              const isActive = bg.todayId === entry.id
+              return (
               <div
                 key={entry.id}
-                className="flex items-center gap-2.5 px-3 py-2.5 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
+                onClick={() => updateBackground({ todayId: entry.id })}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                  isActive
+                    ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-400 dark:ring-blue-600'
+                    : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
               >
+                {/* Active indicator */}
+                <span className={`shrink-0 w-2.5 h-2.5 rounded-full border transition-colors ${
+                  isActive
+                    ? 'bg-blue-500 border-blue-500'
+                    : 'border-gray-300 dark:border-gray-500'
+                }`} />
                 <span
                   className={`shrink-0 text-[9px] font-mono uppercase px-1.5 py-0.5 rounded ${
                     entry.type === 'local'
                       ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400'
+                      : entry.type === 'video'
+                      ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
                       : 'bg-sky-100 text-sky-600 dark:bg-sky-900/40 dark:text-sky-400'
                   }`}
                 >
-                  {entry.type === 'local' ? 'file' : 'url'}
+                  {entry.type === 'local' ? 'img' : entry.type === 'video' ? 'vid' : 'url'}
                 </span>
                 <span className="flex-1 text-sm text-gray-700 dark:text-gray-300 truncate">
                   {entry.name}
                 </span>
                 <button
-                  onClick={() => handleRemove(entry)}
+                  onClick={(e) => { e.stopPropagation(); handleRemove(entry) }}
                   className="shrink-0 text-xs text-red-500 dark:text-red-400 hover:underline"
                 >
                   Delete
                 </button>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </div>

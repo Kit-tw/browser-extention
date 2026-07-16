@@ -40,7 +40,7 @@ export type BgFit = 'cover' | 'contain' | 'center'
 
 export interface BgEntry {
   id: string
-  type: 'local' | 'url'
+  type: 'local' | 'url' | 'video'
   name: string
   url?: string
 }

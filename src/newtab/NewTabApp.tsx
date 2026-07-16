@@ -85,7 +85,7 @@ function ShortcutsHelp({ onClose }: { onClose: () => void }) {
 
 export function NewTabApp() {
   const { dashboard, initialized } = useSettings()
-  const { bg, blobUrl, hasBg } = useBackground()
+  const { bg, blobUrl, mediaType, hasBg } = useBackground()
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [notesOpen, setNotesOpen] = useState(false)
@@ -165,18 +165,37 @@ export function NewTabApp() {
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
         {hasBg && blobUrl ? (
           <>
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: `url(${blobUrl})`,
-                backgroundSize: bg.fit === 'center' ? 'auto' : bg.fit,
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-                ...(bg.blur > 0
-                  ? { filter: `blur(${bg.blur + 4}px)`, transform: 'scale(1.08)' }
-                  : {}),
-              }}
-            />
+            {mediaType === 'video' ? (
+              <video
+                key={blobUrl}
+                className="absolute inset-0 w-full h-full"
+                style={{
+                  objectFit: bg.fit === 'center' ? 'none' : bg.fit,
+                  objectPosition: 'center',
+                  ...(bg.blur > 0
+                    ? { filter: `blur(${bg.blur + 4}px)`, transform: 'scale(1.08)' }
+                    : {}),
+                }}
+                src={blobUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+            ) : (
+              <div
+                className="absolute inset-0"
+                style={{
+                  backgroundImage: `url(${blobUrl})`,
+                  backgroundSize: bg.fit === 'center' ? 'auto' : bg.fit,
+                  backgroundPosition: 'center',
+                  backgroundRepeat: 'no-repeat',
+                  ...(bg.blur > 0
+                    ? { filter: `blur(${bg.blur + 4}px)`, transform: 'scale(1.08)' }
+                    : {}),
+                }}
+              />
+            )}
             <div
               className="absolute inset-0"
               style={{ backgroundColor: `rgba(0,0,0,${bg.opacity})` }}
